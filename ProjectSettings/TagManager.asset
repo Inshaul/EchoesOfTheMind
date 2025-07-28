@@ -6,6 +6,7 @@ TagManager:
   tags:
   - PlayerReference
   - Doll
+  - Ghost
   layers:
   - Default
   - TransparentFX

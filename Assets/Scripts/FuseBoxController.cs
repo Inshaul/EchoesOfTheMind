@@ -38,7 +38,8 @@ public class FuseBoxController : MonoBehaviour
         var room = roomControllers.Find(r => r.roomName == roomName);
         if (room != null)
         {
-            room.StartFlicker(0f, 0.15f, loop);
+            room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true); // Infinite flicker
+
             //room.StartFlicker(4f, 0.1f);
         } 
 

@@ -53,6 +53,44 @@ public class RoomLightController : MonoBehaviour
 
     private Coroutine flickerCoroutine;
 
+    private Coroutine smoothFlickerCoroutine;
+
+    public void StartSmoothFlicker(float duration, float minIntensity = 0.1f, float maxIntensity = 1.5f, float speed = 10f, bool loop = false)
+    {
+        if (smoothFlickerCoroutine != null)
+            StopCoroutine(smoothFlickerCoroutine);
+        smoothFlickerCoroutine = StartCoroutine(SmoothFlickerRoutine(duration, minIntensity, maxIntensity, speed, loop));
+    }
+
+    private IEnumerator SmoothFlickerRoutine(float duration, float minIntensity, float maxIntensity, float speed, bool loop)
+    {
+        var originalIntensities = new Dictionary<Light, float>();
+        foreach (var light in lights)
+            if (light != null)
+                originalIntensities[light] = light.intensity;
+
+        float timer = 0f;
+        while (loop || timer < duration)
+        {
+            foreach (var light in lights)
+            {
+                if (light != null)
+                {
+                    float target = Random.Range(minIntensity, maxIntensity);
+                    light.intensity = Mathf.Lerp(light.intensity, target, Time.deltaTime * speed);
+                }
+            }
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        // Restore intensities after non-loop flicker
+        foreach (var pair in originalIntensities)
+            if (pair.Key != null) pair.Key.intensity = pair.Value;
+        smoothFlickerCoroutine = null;
+    }
+
+
+
     public void StartFlicker(float duration, float interval, bool loop = false)
     {
         if (flickerCoroutine != null)
