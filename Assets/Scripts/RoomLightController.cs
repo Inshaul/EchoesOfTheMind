@@ -13,7 +13,7 @@ public class RoomLightController : MonoBehaviour
     [Header("Effect References (Optional)")]
     public List<ParticleSystem> fireParticles;
 
-    private bool isFlickering = false;
+    //private bool isFlickering = false;
 
     public void TurnOn()
     {
@@ -51,26 +51,54 @@ public class RoomLightController : MonoBehaviour
             if (ps != null && ps.isPlaying) ps.Stop();
     }
 
-    public void StartFlicker(float duration, float interval)
+    private Coroutine flickerCoroutine;
+
+    public void StartFlicker(float duration, float interval, bool loop = false)
     {
-        StopAllCoroutines();
-        StartCoroutine(Flicker(duration, interval));
+        if (flickerCoroutine != null)
+            StopCoroutine(flickerCoroutine);
+        flickerCoroutine = StartCoroutine(Flicker(duration, interval, loop));
     }
 
-    IEnumerator Flicker(float duration, float interval)
+    public void StopFlicker()
+    {
+        if (flickerCoroutine != null)
+        {
+            StopCoroutine(flickerCoroutine);
+            flickerCoroutine = null;
+        }
+        foreach (var light in lights)
+            if (light != null) light.enabled = true;
+    }
+
+    private IEnumerator Flicker(float duration, float interval, bool loop)
     {
         float timer = 0f;
         bool on = false;
-        while (timer < duration)
+
+        if (loop)
         {
-            on = !on;
-            foreach (var light in lights)
-                if (light != null) light.enabled = on;
-            timer += interval;
-            yield return new WaitForSeconds(interval);
+            while (true)
+            {
+                on = !on;
+                foreach (var light in lights)
+                    if (light != null) light.enabled = on;
+                yield return new WaitForSeconds(interval);
+            }
         }
-        // Ensure lights are on after flicker
-        foreach (var light in lights)
-            if (light != null) light.enabled = true;
+        else
+        {
+            while (timer < duration)
+            {
+                on = !on;
+                foreach (var light in lights)
+                    if (light != null) light.enabled = on;
+                timer += interval;
+                yield return new WaitForSeconds(interval);
+            }
+            foreach (var light in lights)
+                if (light != null) light.enabled = true;
+        }
+        flickerCoroutine = null;
     }
 }

@@ -34,8 +34,10 @@ public class FuseBoxLever : MonoBehaviour
     {
         powerOn = !powerOn;
         if (fuseBoxController == null) return;
-        if (powerOn)
+        if (powerOn) {
             fuseBoxController.RestoreAllRooms();
+            fuseBoxController.FlickerRoom("GateHouse", true);//temp
+        }
         else
             foreach (var room in fuseBoxController.roomControllers)
                 room.TurnOff();
