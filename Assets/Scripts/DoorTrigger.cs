@@ -15,4 +15,13 @@ public class DoorTrigger : MonoBehaviour
             doorAnimator.SetBool(openParam, true);
         }
     }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Ghost"))
+        {
+            doorAnimator.SetBool(openParam, false);
+            Debug.Log("Ghost left trigger, closing door.");
+        }
+    }
 }

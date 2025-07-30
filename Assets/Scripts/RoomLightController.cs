@@ -15,19 +15,25 @@ public class RoomLightController : MonoBehaviour
 
     //private bool isFlickering = false;
 
+    public bool isLit = true;
+
     public void TurnOn()
     {
         foreach (var light in lights)
             if (light != null) light.enabled = true;
 
-        foreach (var ps in fireParticles)
-            if (ps != null && !ps.isPlaying) ps.Play();
+        isLit = true;
+
+        // foreach (var ps in fireParticles)
+        //     if (ps != null && !ps.isPlaying) ps.Play();
     }
 
     public void TurnOff()
     {
         foreach (var light in lights)
             if (light != null) light.enabled = false;
+
+        isLit = false;
 
         foreach (var ps in fireParticles)
             if (ps != null && ps.isPlaying) ps.Stop();

@@ -10,6 +10,7 @@ public class FuseBoxLever : MonoBehaviour
 
     void Start()
     {
+        TogglePower();
         SetLeverAngle(offAngle);
         if (fuseBoxController != null)
             fuseBoxController.RestoreAllRooms(); 
