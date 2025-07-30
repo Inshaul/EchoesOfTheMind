@@ -289,10 +289,6 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
-
-
-
-
     void DetectMicInput()
     {
         if (screamDetector != null && screamDetector.IsPlayerTalking())

@@ -8,7 +8,7 @@ public class FuseBoxController : MonoBehaviour
 
     void Start()
     {
-        TurnOffAllRooms();
+        //TurnOffAllRooms();
     }
     public void CutPowerToRoom(string roomName)
     {
