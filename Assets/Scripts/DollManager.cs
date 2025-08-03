@@ -3,16 +3,16 @@ using UnityEngine;
 
 public class DollManager : MonoBehaviour
 {
-    public List<Transform> spawnPoints;        // Assign in Inspector
-    public GameObject dollPrefab;              // Drag your doll prefab here
+    public List<Transform> spawnPoints;        
+    public GameObject dollPrefab;              
 
     private GameObject currentDoll;
-    private int dollsRemaining = 5;            // Adjust if 5–10 dolls
+    private int dollsRemaining = 5;           
     private List<int> usedIndices = new List<int>();
 
     void Start()
     {
-        SpawnNextDoll();
+        //SpawnNextDoll();
     }
 
     public void SpawnNextDoll()
@@ -20,7 +20,6 @@ public class DollManager : MonoBehaviour
         if (dollsRemaining <= 0)
         {
             Debug.Log("✅ All dolls completed.");
-            // Trigger final escape or ending sequence here
             return;
         }
 

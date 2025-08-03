@@ -9,8 +9,8 @@ public class GameDirector : MonoBehaviour
     public DollManager dollManager; 
     public FearManager fearManager; 
 
-    public FuseBoxController fuseBox; // Drag in Inspector
-    private bool powerOn = false;
+    public FuseBoxController fuseBox;
+    //private bool powerOn = false;
 
     private Coroutine ghostTimeoutCoroutine;
     private enum GhostSpawnReason { None, Fear, Doll }
@@ -25,7 +25,7 @@ public class GameDirector : MonoBehaviour
     void Start()
     {
         HideGhost();
-        powerOn = false;
+        //powerOn = false;
         if (fuseBox != null) fuseBox.TurnOffAllRooms();
     }
 

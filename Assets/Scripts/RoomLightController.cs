@@ -11,7 +11,9 @@ public class RoomLightController : MonoBehaviour
     public List<Light> lights;
 
     [Header("Effect References (Optional)")]
-    public List<ParticleSystem> fireParticles;
+    public List<GameObject> fireParticles;
+
+    public GameObject hellDoorTrigger;
 
     //private bool isFlickering = false;
 
@@ -23,9 +25,6 @@ public class RoomLightController : MonoBehaviour
             if (light != null) light.enabled = true;
 
         isLit = true;
-
-        // foreach (var ps in fireParticles)
-        //     if (ps != null && !ps.isPlaying) ps.Play();
     }
 
     public void TurnOff()
@@ -34,9 +33,6 @@ public class RoomLightController : MonoBehaviour
             if (light != null) light.enabled = false;
 
         isLit = false;
-
-        foreach (var ps in fireParticles)
-            if (ps != null && ps.isPlaying) ps.Stop();
     }
 
     public void SetLightColor(Color color)
@@ -48,13 +44,23 @@ public class RoomLightController : MonoBehaviour
     public void ActivateFire()
     {
         foreach (var ps in fireParticles)
-            if (ps != null && !ps.isPlaying) ps.Play();
+            if (ps != null && !ps.activeInHierarchy) ps.SetActive(true);
+    }
+
+    public void EnableHellDoorTrigger()
+    {
+        hellDoorTrigger.SetActive(true);
+    }
+
+    public void DisableHellDoorTrigger()
+    {
+        hellDoorTrigger.SetActive(false);
     }
 
     public void DeactivateFire()
     {
         foreach (var ps in fireParticles)
-            if (ps != null && ps.isPlaying) ps.Stop();
+            if (ps != null && ps.activeInHierarchy) ps.SetActive(false);
     }
 
     private Coroutine flickerCoroutine;

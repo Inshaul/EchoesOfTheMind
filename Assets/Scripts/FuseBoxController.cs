@@ -1,15 +1,11 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 public class FuseBoxController : MonoBehaviour
 {
     public List<RoomLightController> roomControllers;
 
-
-    void Start()
-    {
-        //TurnOffAllRooms();
-    }
     public void CutPowerToRoom(string roomName)
     {
         var room = roomControllers.Find(r => r.roomName == roomName);
@@ -23,13 +19,13 @@ public class FuseBoxController : MonoBehaviour
             room.TurnOff();
         }
     }
-    public void SetRoomToHell(string roomName)
+    public void SetRoomToHell(RoomLightController room)
     {
-        var room = roomControllers.Find(r => r.roomName == roomName);
         if (room != null)
         {
             room.SetLightColor(Color.red);
             room.ActivateFire();
+            room.EnableHellDoorTrigger();
         }
     }
 
@@ -45,6 +41,24 @@ public class FuseBoxController : MonoBehaviour
 
     }
 
+    public void FlickerLights(bool doFlicker = true)
+    {
+        for (int i = 0; i < roomControllers.Count; i++)
+        {
+            if (roomControllers[i] != null)
+            {
+                if (doFlicker)
+                {
+                    roomControllers[i].StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
+                }
+                else
+                {
+                    roomControllers[i].StopFlicker();
+                }
+            }
+        }
+    }
+
     public void RestoreAllRooms()
     {
         foreach (var room in roomControllers)
@@ -52,6 +66,7 @@ public class FuseBoxController : MonoBehaviour
             room.SetLightColor(Color.white);
             room.TurnOn();
             room.DeactivateFire();
+            room.DisableHellDoorTrigger();
         }
     }
 }
