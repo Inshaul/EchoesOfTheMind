@@ -6,22 +6,30 @@ public class DoorTrigger : MonoBehaviour
     public Animator doorAnimator;
     public string openParam = "isOpen"; // Animator param
 
+    public AudioSource audioSource;
+    public AudioClip closeSound;
+
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Triggerred: " + other.gameObject.name);
-        if (other.CompareTag("Ghost"))
+        if (other.CompareTag("Ghost") || other.CompareTag("PlayerReference"))
         {
-            Debug.Log("Ghost Detected!");
             doorAnimator.SetBool(openParam, true);
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Ghost"))
+        if (other.CompareTag("Ghost") || other.CompareTag("PlayerReference"))
         {
             doorAnimator.SetBool(openParam, false);
-            Debug.Log("Ghost left trigger, closing door.");
+            PlayDoorSound();
         }
+    }
+    private void PlayDoorSound()
+    {
+        if (audioSource == null) return;
+        //audioSource.clip = open ? openSound : closeSound;
+        audioSource.clip = closeSound;
+        audioSource.Play();
     }
 }

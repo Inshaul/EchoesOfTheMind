@@ -29,7 +29,7 @@ public class EmissionMaterialGlassTorchFadeOut : MonoBehaviour
 
     private void Update()
     {
-        _intensity = _torchOnOff.intensityLight;
+//        _intensity = _torchOnOff.intensityLight;
     }
 
     public void TimeEmission(float t)

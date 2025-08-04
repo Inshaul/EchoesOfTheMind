@@ -4,50 +4,53 @@ public class FuseBoxLever : MonoBehaviour
 {
     public FuseBoxController fuseBoxController;
     public Transform leverHandle;
-    public float onAngle = -30f;
-    public float offAngle = 30f;
+    public float onAngle = -105f;
+    public float offAngle = 55f;
     private bool powerOn = false;
 
-    void Start()
+    public AudioSource leverAudio;
+
+    public Animator leverAnimator;
+
+    private void Start()
     {
-        TogglePower();
-        SetLeverAngle(offAngle);
+        powerOn = false;
+        //SetLeverAngle(offAngle);
         if (fuseBoxController != null)
-            fuseBoxController.RestoreAllRooms(); 
+            fuseBoxController.TurnOffAllRooms();
     }
 
-    void Update()
+    private void OnTriggerEnter(Collider other)
     {
-        float angle = leverHandle.localEulerAngles.x;
-        angle = (angle > 180) ? angle - 360 : angle; 
-
-        if (!powerOn && angle < -25f)
-        {
-            TogglePower();
-        }
-        else if (powerOn && angle > 25f)
+        // Use the tag of your VR hand/controller
+        if (other.CompareTag("PlayerReference") || other.CompareTag("Player"))
         {
             TogglePower();
         }
     }
 
-    void TogglePower()
+    private void TogglePower()
     {
         powerOn = !powerOn;
+        //SetLeverAngle(powerOn ? onAngle : offAngle);
+
+        if (leverAnimator != null)
+            leverAnimator.SetBool("isOn", powerOn);
+
+        if (leverAudio != null)
+            leverAudio.Play();
+        
+
         if (fuseBoxController == null) return;
-        if (powerOn) {
+        if (powerOn)
+        {
             fuseBoxController.RestoreAllRooms();
-            fuseBoxController.FlickerRoom("GateHouse", true);//temp
+            fuseBoxController.FlickerRoom("GateHouse", true); // TEMP: Flicker example
         }
         else
-            foreach (var room in fuseBoxController.roomControllers)
-                room.TurnOff();
-        SetLeverAngle(powerOn ? onAngle : offAngle);
+        {
+            fuseBoxController.TurnOffAllRooms();
+        }
     }
 
-    private void SetLeverAngle(float angle)
-    {
-        if (leverHandle != null)
-            leverHandle.localRotation = Quaternion.Euler(angle, 0, 0); 
-    }
 }

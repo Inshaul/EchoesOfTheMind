@@ -49,12 +49,18 @@ public class RoomLightController : MonoBehaviour
 
     public void EnableHellDoorTrigger()
     {
-        hellDoorTrigger.SetActive(true);
+        if (hellDoorTrigger != null)
+        {
+            hellDoorTrigger.SetActive(true);
+        }
     }
 
     public void DisableHellDoorTrigger()
     {
-        hellDoorTrigger.SetActive(false);
+        if (hellDoorTrigger != null)
+        {
+            hellDoorTrigger.SetActive(false);
+        }
     }
 
     public void DeactivateFire()
