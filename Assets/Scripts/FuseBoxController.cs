@@ -5,7 +5,21 @@ using Unity.VisualScripting;
 public class FuseBoxController : MonoBehaviour
 {
     public List<RoomLightController> roomControllers;
+    public bool powerRestored = false;
+    private bool hasActivatedFuseBox = false;
+    public void ActivateFuseBox()
+    {
+        if (!hasActivatedFuseBox)
+        {
+            hasActivatedFuseBox = true;
+            powerRestored = true;
 
+            Debug.Log("Fuse box activated for the first time!");
+
+            GameDirector.Instance.OnFirstPowerRestored();
+        }
+        RestoreAllRooms();
+    }
     public void CutPowerToRoom(string roomName)
     {
         var room = roomControllers.Find(r => r.roomName == roomName);
@@ -14,22 +28,15 @@ public class FuseBoxController : MonoBehaviour
     public void TurnOffAllRooms()
     {
         Debug.Log("Turn off log");
+        powerRestored = false;
         foreach (var room in roomControllers)
         {
             room.TurnOff();
-        }
-    }
-    public void SetRoomToHell(RoomLightController room)
-    {
-        if (room != null)
-        {
-            room.SetLightColor(Color.red);
-            room.ActivateFire();
-            room.EnableHellDoorTrigger();
+            room.DisableRoomToHell();
         }
     }
 
-    public void FlickerRoom(string roomName, bool loop=false)
+    public void FlickerRoom(string roomName, bool loop = false)
     {
         var room = roomControllers.Find(r => r.roomName == roomName);
         if (room != null)
@@ -37,7 +44,7 @@ public class FuseBoxController : MonoBehaviour
             room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true); // Infinite flicker
 
             //room.StartFlicker(4f, 0.1f);
-        } 
+        }
 
     }
 

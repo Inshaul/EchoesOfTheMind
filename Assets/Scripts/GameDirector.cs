@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using System;
 
 public class GameDirector : MonoBehaviour
 {
@@ -10,6 +12,13 @@ public class GameDirector : MonoBehaviour
     public FearManager fearManager; 
 
     public FuseBoxController fuseBox;
+
+    public HintManager hintManager;
+
+    public List<String> hintsText = new List<string> {"Pick up the Flashlight", "Find the fuse box to restore the full power", "Find the vodoo doll-Whispers helps", "Find the door to hell and throw the doll into it", "Leave the house" };
+
+    public int destroyedDollCounter = 0;
+    
     //private bool powerOn = false;
 
     private Coroutine ghostTimeoutCoroutine;
@@ -26,12 +35,23 @@ public class GameDirector : MonoBehaviour
     {
         HideGhost();
         //powerOn = false;
+        hintManager.SetHint(hintsText[0]);
         if (fuseBox != null) fuseBox.TurnOffAllRooms();
+    }
+
+    public void OnFirstTorchGrabbed()
+    {
+        hintManager.SetHint(hintsText[1]);
+    }
+
+    public void OnFirstPowerRestored()
+    {
+        hintManager.SetHint(hintsText[2]);
     }
 
     public void SpawnGhostByFear()
     {
-        if (ghostReason != GhostSpawnReason.None) return; 
+        if (ghostReason != GhostSpawnReason.None) return;
         ShowGhost();
         ghostReason = GhostSpawnReason.Fear;
         if (ghostTimeoutCoroutine != null) StopCoroutine(ghostTimeoutCoroutine);

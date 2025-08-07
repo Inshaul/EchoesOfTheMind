@@ -1,20 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class DollManager : MonoBehaviour
 {
     public List<Transform> spawnPoints;        
     public GameObject dollPrefab;              
 
+
     private GameObject currentDoll;
     private int dollsRemaining = 5;           
+
     private List<int> usedIndices = new List<int>();
-
-    void Start()
-    {
-        //SpawnNextDoll();
-    }
-
+ 
     public void SpawnNextDoll()
     {
         if (dollsRemaining <= 0)

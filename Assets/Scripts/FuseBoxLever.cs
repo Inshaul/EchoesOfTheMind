@@ -16,8 +16,6 @@ public class FuseBoxLever : MonoBehaviour
     {
         powerOn = false;
         //SetLeverAngle(offAngle);
-        if (fuseBoxController != null)
-            fuseBoxController.TurnOffAllRooms();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -44,7 +42,7 @@ public class FuseBoxLever : MonoBehaviour
         if (fuseBoxController == null) return;
         if (powerOn)
         {
-            fuseBoxController.RestoreAllRooms();
+            fuseBoxController.ActivateFuseBox();
             fuseBoxController.FlickerRoom("GateHouse", true); // TEMP: Flicker example
         }
         else

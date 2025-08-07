@@ -9,6 +9,9 @@ public class TorchLightController : MonoBehaviour
     public InputActionReference toggleRightAction;
     public AudioSource clickAudio;
 
+    public bool pickedUpTorch = false;
+    private bool hasGrabbedBefore = false;
+
     private XRGrabInteractable grabInteractable;
     private bool isHeld = false;
     private bool isOn = false;
@@ -19,7 +22,7 @@ public class TorchLightController : MonoBehaviour
         grabInteractable = GetComponent<XRGrabInteractable>();
         grabInteractable.selectEntered.AddListener(OnGrab);
         grabInteractable.selectExited.AddListener(OnRelease);
-
+        isOn = true;
         torchLight.enabled = isOn;
     }
 
@@ -32,6 +35,12 @@ public class TorchLightController : MonoBehaviour
 
     private void OnGrab(SelectEnterEventArgs args)
     {
+        pickedUpTorch = true;
+        if (!hasGrabbedBefore)
+        {
+            hasGrabbedBefore = true;
+            GameDirector.Instance.OnFirstTorchGrabbed();
+        }
         isHeld = true;
         torchLight.enabled = isOn;
         string interactorName = args.interactorObject.transform.name.ToLower();

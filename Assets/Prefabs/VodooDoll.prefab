@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 5064723730026746118}
   - component: {fileID: 3195768518782558025}
   - component: {fileID: 4085293498001695419}
+  - component: {fileID: 4208309362562487093}
   m_Layer: 0
   m_Name: VodooDoll
   m_TagString: Doll
@@ -300,7 +301,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 8300000, guid: 0ef2f5274a3815040a4bf769e977bf31, type: 3}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 0.6
   m_Pitch: 1
   Loop: 1
@@ -385,6 +386,22 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &4208309362562487093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2870825041861784078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82a5f042f0cb6324ebb0343a6ac094d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pickedUpDoll: 0
+  toggleLeftAction: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  toggleRightAction: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  audioSource: {fileID: 4085293498001695419}
 --- !u!1 &4141701258404459011
 GameObject:
   m_ObjectHideFlags: 0

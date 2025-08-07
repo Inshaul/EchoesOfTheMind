@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 
 public class RoomLightController : MonoBehaviour
 {
@@ -11,11 +12,23 @@ public class RoomLightController : MonoBehaviour
     public List<Light> lights;
 
     [Header("Effect References (Optional)")]
-    public List<GameObject> fireParticles;
+    public GameObject fireParticles;
 
     public GameObject hellDoorTrigger;
 
     //private bool isFlickering = false;
+
+    void Start()
+    {
+        if (fireParticles != null)
+        {
+            fireParticles.SetActive(false);
+        }
+        if (hellDoorTrigger != null)
+        {
+            hellDoorTrigger.SetActive(false);
+        }
+    }
 
     public bool isLit = true;
 
@@ -43,8 +56,25 @@ public class RoomLightController : MonoBehaviour
 
     public void ActivateFire()
     {
-        foreach (var ps in fireParticles)
-            if (ps != null && !ps.activeInHierarchy) ps.SetActive(true);
+        if (fireParticles != null && !fireParticles.activeInHierarchy)
+        {
+            fireParticles.SetActive(true);
+        }
+        
+    }
+
+    public void SetRoomToHell()
+    {
+        SetLightColor(Color.red);
+        ActivateFire();
+        EnableHellDoorTrigger();
+    }
+
+    public void DisableRoomToHell()
+    {
+        SetLightColor(Color.white);
+        DeactivateFire();
+        DisableHellDoorTrigger();
     }
 
     public void EnableHellDoorTrigger()
@@ -65,8 +95,10 @@ public class RoomLightController : MonoBehaviour
 
     public void DeactivateFire()
     {
-        foreach (var ps in fireParticles)
-            if (ps != null && ps.activeInHierarchy) ps.SetActive(false);
+        if (fireParticles != null && fireParticles.activeInHierarchy)
+        {
+            fireParticles.SetActive(false);
+        }
     }
 
     private Coroutine flickerCoroutine;
