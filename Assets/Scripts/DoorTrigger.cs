@@ -22,8 +22,15 @@ public class DoorTrigger : MonoBehaviour
         if (other.CompareTag("Ghost") || other.CompareTag("PlayerReference"))
         {
             doorAnimator.SetBool(openParam, false);
-            PlayDoorSound();
+            StartCoroutine(PlayDoorSoundWithDelay(1f));
         }
+    }
+    
+
+    private IEnumerator PlayDoorSoundWithDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        PlayDoorSound();
     }
     private void PlayDoorSound()
     {

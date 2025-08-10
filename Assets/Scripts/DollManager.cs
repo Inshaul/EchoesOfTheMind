@@ -9,6 +9,8 @@ public class DollManager : MonoBehaviour
 
 
     private GameObject currentDoll;
+
+    public int TotalDolls = 5;
     private int dollsRemaining = 5;           
 
     private List<int> usedIndices = new List<int>();
@@ -39,6 +41,6 @@ public class DollManager : MonoBehaviour
     public void OnDollDestroyedOrUsed()
     {
         Destroy(currentDoll);
-        Invoke(nameof(SpawnNextDoll), 3f); // Delay to allow hunt or audio events
+        //Invoke(nameof(SpawnNextDoll), 3f); // Delay to allow hunt or audio events
     }
 }

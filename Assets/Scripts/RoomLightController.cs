@@ -56,7 +56,7 @@ public class RoomLightController : MonoBehaviour
 
     public void ActivateFire()
     {
-        if (fireParticles != null && !fireParticles.activeInHierarchy)
+        if (fireParticles != null)
         {
             fireParticles.SetActive(true);
         }

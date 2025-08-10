@@ -54,7 +54,7 @@ public class FuseBoxController : MonoBehaviour
         {
             if (roomControllers[i] != null)
             {
-                if (doFlicker)
+                if (doFlicker && roomControllers[i].isLit)
                 {
                     roomControllers[i].StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
                 }

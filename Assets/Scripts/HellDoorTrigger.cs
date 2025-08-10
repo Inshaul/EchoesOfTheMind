@@ -16,8 +16,7 @@ public class HellDoorTrigger : MonoBehaviour
             if (manager != null)
                 manager.OnDollDestroyedOrUsed();
 
-            GameDirector.Instance.destroyedDollCounter++;
-            GameDirector.Instance.fuseBox.TurnOffAllRooms();
+            GameDirector.Instance.OnDollDestroyed();
 
             // Optional: play effects or sounds here
             // e.g., GetComponent<AudioSource>().Play();

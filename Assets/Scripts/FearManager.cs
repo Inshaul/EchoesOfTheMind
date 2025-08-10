@@ -10,7 +10,8 @@ public class FearManager : MonoBehaviour
 
     void Awake()
     {
-        Instance = this;
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
     public void SetLit(bool value)
     {

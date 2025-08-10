@@ -15,7 +15,7 @@ public class GhostAIController : MonoBehaviour
     private Transform player;
 
     [Header("Roaming Settings")]
-    public float roamRadius = 20f;
+    public float roamRadius = 100f;
     public float roamDelay = 5f;
     private float nextRoamTime = 0f;
 
@@ -39,7 +39,8 @@ public class GhostAIController : MonoBehaviour
     public float teleportDistanceFromPlayer = 10f;
 
     private Vector3 lastPosition;
-    private float stuckTimer = 0f; 
+
+    public AudioSource audioSource;
 
 
     void Start()
@@ -59,6 +60,8 @@ public class GhostAIController : MonoBehaviour
         StartCoroutine(BlinkRoutine());
     }
 
+
+
     void Update()
     {
         switch (currentState)
@@ -67,6 +70,7 @@ public class GhostAIController : MonoBehaviour
                 RandomRoam();
                 DetectPlayerBySight();
                 DetectMicInput();
+                TryTeleportNearPlayer();
                 break;
 
             case GhostState.ChasingPlayer:
@@ -77,8 +81,29 @@ public class GhostAIController : MonoBehaviour
                 MoveTowardPlayerSound();
                 break;
         }
+    }
 
-        //CheckIfStuck();
+
+    void TryTeleportNearPlayer()
+    {
+        if (!allowTeleportation) return;
+
+        if (Time.time >= nextTeleportTime && player != null)
+        {
+            // Pick a random position around the player
+            Vector3 randomDir = Random.insideUnitSphere * teleportDistanceFromPlayer;
+            randomDir += player.position;
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomDir, out hit, 5f, NavMesh.AllAreas))
+            {
+                transform.position = hit.position;
+                agent.Warp(hit.position); // Ensures NavMesh sync
+                Debug.Log("👻 Ghost teleported!");
+            }
+
+            nextTeleportTime = Time.time + teleportCooldown;
+        }
     }
 
     void StartPatrolling()
@@ -107,21 +132,6 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
-    // IEnumerator BlinkRoutine()
-    // {
-    //     while (true)
-    //     {
-    //         yield return new WaitForSeconds(Random.Range(minBlinkTime, maxBlinkTime));
-
-    //         // Fade out
-    //         SetGhostAlpha(0f);
-    //         yield return new WaitForSeconds(2f); // Invisible duration
-
-    //         // Fade in
-    //         SetGhostAlpha(1f);
-    //     }
-    // }
-
     IEnumerator BlinkRoutine()
     {
         while (true)
@@ -146,112 +156,6 @@ public class GhostAIController : MonoBehaviour
             ghostRenderer.material.color = color;
         }
     }
-
-
-    void TryTeleport()
-    {
-        if (!allowTeleportation || Time.time < nextTeleportTime || player == null) return;
-
-        Vector3 randomOffset = Random.onUnitSphere;
-        randomOffset.y = 0; // Keep on ground
-        randomOffset = randomOffset.normalized * teleportDistanceFromPlayer;
-
-        Vector3 newPos = player.position + randomOffset;
-
-        if (NavMesh.SamplePosition(newPos, out NavMeshHit hit, 5f, NavMesh.AllAreas))
-        {
-            transform.position = hit.position;
-            nextTeleportTime = Time.time + teleportCooldown;
-            Debug.Log("👻 Ghost teleported!");
-        }
-    }
-
-    void CheckIfStuck()
-    {
-        float movedDistance = Vector3.Distance(transform.position, lastPosition);
-
-        if (movedDistance < 0.05f) // not moving
-        {
-            stuckTimer += Time.deltaTime;
-            if (stuckTimer > 3f) // stuck for 3 seconds
-            {
-                Debug.LogWarning("🚧 Ghost seems stuck, teleporting to new location.");
-                Roam(); // Force new destination
-                stuckTimer = 0f;
-            }
-        }
-        else
-        {
-            stuckTimer = 0f; // Reset if moving
-        }
-
-        lastPosition = transform.position;
-    }
-
-    // void DetectPlayerBySight()
-    // {
-    //     if (player == null || eyePoint == null) return;
-
-    //     // Target the player's chest/head
-    //     Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
-
-    //     // Direction from ghost's eyes to player
-    //     Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
-    //     float angle = Vector3.Angle(transform.forward, directionToPlayer);
-
-    //     if (directionToPlayer.magnitude < visionRange && angle < fieldOfView / 2f)
-    //     {
-    //         Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
-    //         if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
-    //         {
-    //             if (hit.transform.CompareTag("Player"))
-    //             {
-    //                 currentState = GhostState.ChasingPlayer;
-    //                 Debug.Log("👁️ Ghost sees the player!");
-    //             }
-    //         }
-    //     }
-    // }
-
-    // void DetectPlayerBySight()
-    // {
-    //     if (player == null || eyePoint == null) return;
-
-    //     // Target chest/head area of player
-    //     Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
-
-    //     // Calculate direction and distance
-    //     Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
-    //     float distanceToPlayer = directionToPlayer.magnitude;
-    //     float angle = Vector3.Angle(eyePoint.forward, directionToPlayer);
-
-    //     // Draw field of view cone (debug)
-    //     Debug.DrawRay(eyePoint.position, eyePoint.forward * visionRange, Color.green); // center line
-    //     Debug.DrawRay(eyePoint.position, Quaternion.Euler(0, fieldOfView / 2, 0) * eyePoint.forward * visionRange, Color.yellow);
-    //     Debug.DrawRay(eyePoint.position, Quaternion.Euler(0, -fieldOfView / 2, 0) * eyePoint.forward * visionRange, Color.yellow);
-
-    //     // Check if player is within range and angle
-    //     if (distanceToPlayer < visionRange && angle < fieldOfView / 2f)
-    //     {
-    //         // Perform raycast to see if ghost has line-of-sight
-    //         Ray ray = new Ray(eyePoint.position, directionToPlayer.normalized);
-    //         if (Physics.Raycast(ray, out RaycastHit hit, visionRange))
-    //         {
-    //             //Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red); // show hit line
-    //             //Debug.DrawRay(ray.origin, ray.direction * 100f, Color.magenta);
-    //             if (hit.transform.root.name != "Asylum")
-    //             {
-    //                 Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red); // show hit line
-    //                 Debug.Log("hit name: " + hit.transform.name + " | tag: " + hit.transform.tag + " | root: " + hit.transform.root.name);
-    //             }
-    //             if (hit.transform.root.CompareTag("Player"))
-    //             {
-    //                 Debug.Log("👁️ Ghost sees the player!");
-    //                 currentState = GhostState.ChasingPlayer;
-    //             }
-    //         }
-    //     }
-    // }
 
 
     void DetectPlayerBySight()
@@ -298,19 +202,52 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
+    // void ChasePlayer()
+    // {
+    //     Debug.Log("🚨 Ghost is chasing the player!");
+    //     agent.SetDestination(player.position);
+
+    //     float distance = Vector3.Distance(transform.position, player.position);
+    //     if (distance > visionRange * 1.5f)
+    //     {
+    //         currentState = GhostState.Patrolling;
+    //         Roam();
+    //     }
+    // }
     void ChasePlayer()
     {
         Debug.Log("🚨 Ghost is chasing the player!");
+
+        // Keep chasing towards the player's last known position
         agent.SetDestination(player.position);
 
-        float distance = Vector3.Distance(transform.position, player.position);
-        if (distance > visionRange * 1.5f)
+        // Check if player is still in vision
+        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
+        Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
+        float distanceToPlayer = directionToPlayer.magnitude;
+        float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
+
+        bool canSeePlayer = false;
+
+        if (distanceToPlayer <= visionRange && angleToPlayer < fieldOfView / 2f)
+        {
+            if (Physics.Raycast(eyePoint.position, directionToPlayer.normalized, out RaycastHit hit, visionRange))
+            {
+                if (hit.transform.CompareTag("Player") || hit.transform.root.CompareTag("Player"))
+                {
+                    canSeePlayer = true;
+                }
+            }
+        }
+
+        // If player is out of sight for too long, return to patrolling
+        if (!canSeePlayer)
         {
             currentState = GhostState.Patrolling;
             Roam();
+            Debug.Log("👁️ Lost sight of player — resuming patrol.");
         }
     }
-
     void MoveTowardPlayerSound()
     {
         agent.SetDestination(player.position);

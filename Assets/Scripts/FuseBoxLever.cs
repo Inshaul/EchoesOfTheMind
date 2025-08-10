@@ -43,7 +43,6 @@ public class FuseBoxLever : MonoBehaviour
         if (powerOn)
         {
             fuseBoxController.ActivateFuseBox();
-            fuseBoxController.FlickerRoom("GateHouse", true); // TEMP: Flicker example
         }
         else
         {
