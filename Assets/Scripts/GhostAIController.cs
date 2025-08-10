@@ -24,6 +24,10 @@ public class GhostAIController : MonoBehaviour
     public float fieldOfView = 60f;
     public float verticalFieldOfView = 45f;
 
+    [Header("Catch Settings")]
+    public Transform catchTeleportLocation; // Target location when player is caught
+    public float catchDistance = 2f;        // Distance to trigger catch
+
     [Header("Mic Detection")]
     public ScreamDetector screamDetector; // Drag reference in Inspector
 
@@ -193,6 +197,28 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
+    void TeleportPlayerOnCatch()
+    {
+        if (catchTeleportLocation != null && player != null)
+        {
+            player.position = catchTeleportLocation.position;
+
+            // If player has a CharacterController, reset it properly
+            CharacterController cc = player.GetComponent<CharacterController>();
+            if (cc != null)
+            {
+                cc.enabled = false;
+                player.position = catchTeleportLocation.position;
+                cc.enabled = true;
+            }
+
+            Debug.Log($"📍 Player teleported to {catchTeleportLocation.position}");
+        }
+
+        currentState = GhostState.Patrolling;
+        Roam();
+    }    
+
     void DetectMicInput()
     {
         if (screamDetector != null && screamDetector.IsPlayerTalking())
@@ -217,19 +243,24 @@ public class GhostAIController : MonoBehaviour
     void ChasePlayer()
     {
         Debug.Log("🚨 Ghost is chasing the player!");
-
-        // Keep chasing towards the player's last known position
         agent.SetDestination(player.position);
 
-        // Check if player is still in vision
+        float distance = Vector3.Distance(transform.position, player.position);
+
+        // ✅ Player caught check
+        if (distance <= catchDistance)
+        {
+            Debug.Log("🪝 Player caught by ghost!");
+            TeleportPlayerOnCatch();
+            return;
+        }
+
         Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
-        float distanceToPlayer = directionToPlayer.magnitude;
         float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
 
         bool canSeePlayer = false;
-
-        if (distanceToPlayer <= visionRange && angleToPlayer < fieldOfView / 2f)
+        if (distance <= visionRange && angleToPlayer < fieldOfView / 2f)
         {
             if (Physics.Raycast(eyePoint.position, directionToPlayer.normalized, out RaycastHit hit, visionRange))
             {
@@ -240,7 +271,6 @@ public class GhostAIController : MonoBehaviour
             }
         }
 
-        // If player is out of sight for too long, return to patrolling
         if (!canSeePlayer)
         {
             currentState = GhostState.Patrolling;

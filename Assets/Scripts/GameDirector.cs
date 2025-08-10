@@ -124,9 +124,9 @@ public class GameDirector : MonoBehaviour
         // Increase ghost speed
         var agent = ghost.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent) agent.speed *= 1.1f;
-
+        int dollsRemaining = dollManager.TotalDolls - destroyedDollCounter;
         // Enable teleport if <= 2 dolls left
-        if ((dollManager.TotalDolls - destroyedDollCounter) <= 2)
+        if (dollsRemaining <= 2)
         {
             var ghostAI = ghost.GetComponent<GhostAIController>();
             if (ghostAI != null)
@@ -140,7 +140,18 @@ public class GameDirector : MonoBehaviour
         //if (ghostReason == GhostSpawnReason.Doll) DespawnGhost();
         fuseBox.FlickerLights(false); // stop global flicker after ritual
         fuseBox.fuseBoxLever.TogglePower();
+
+        if (dollsRemaining > 0)
+        {
+            StartCoroutine(DelayedDollSpawnActions());
+        }
         
+    }
+
+    private IEnumerator DelayedDollSpawnActions()
+    {
+        yield return new WaitForSeconds(10f);
+        SpawnGhostByDoll();
     }
 
 
