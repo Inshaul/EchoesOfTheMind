@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class FuseBoxLever : MonoBehaviour
@@ -27,7 +28,7 @@ public class FuseBoxLever : MonoBehaviour
         }
     }
 
-    private void TogglePower()
+    public void TogglePower()
     {
         powerOn = !powerOn;
         //SetLeverAngle(powerOn ? onAngle : offAngle);
@@ -35,11 +36,17 @@ public class FuseBoxLever : MonoBehaviour
         if (leverAnimator != null)
             leverAnimator.SetBool("isOn", powerOn);
 
+        StartCoroutine(DelayedLeverActions());
+    }
+    private IEnumerator DelayedLeverActions()
+    {
+        yield return new WaitForSeconds(1f); // Wait for animation
+
         if (leverAudio != null)
             leverAudio.Play();
-        
 
-        if (fuseBoxController == null) return;
+        if (fuseBoxController == null) yield break;
+
         if (powerOn)
         {
             fuseBoxController.ActivateFuseBox();

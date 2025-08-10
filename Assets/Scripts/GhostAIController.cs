@@ -33,7 +33,7 @@ public class GhostAIController : MonoBehaviour
     public SkinnedMeshRenderer ghostRenderer;
 
     [Header("Teleport Settings")]
-    public bool allowTeleportation = true;
+    public bool allowTeleportation = false;
     public float teleportCooldown = 20f;
     private float nextTeleportTime = 0f;
     public float teleportDistanceFromPlayer = 10f;

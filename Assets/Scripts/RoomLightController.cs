@@ -150,13 +150,16 @@ public class RoomLightController : MonoBehaviour
 
     public void StopFlicker()
     {
-        if (flickerCoroutine != null)
+        if (smoothFlickerCoroutine != null)
         {
-            StopCoroutine(flickerCoroutine);
-            flickerCoroutine = null;
+            StopCoroutine(smoothFlickerCoroutine);
+            smoothFlickerCoroutine = null;
         }
-        foreach (var light in lights)
-            if (light != null) light.enabled = true;
+        if (isLit)
+        {    
+            foreach (var light in lights)
+                if (light != null) light.enabled = true;
+        }
     }
 
     private IEnumerator Flicker(float duration, float interval, bool loop)

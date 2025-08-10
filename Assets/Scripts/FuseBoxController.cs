@@ -7,6 +7,8 @@ public class FuseBoxController : MonoBehaviour
     public List<RoomLightController> roomControllers;
     public bool powerRestored = false;
     private bool hasActivatedFuseBox = false;
+
+    public FuseBoxLever fuseBoxLever;
     public void ActivateFuseBox()
     {
         if (!hasActivatedFuseBox)

@@ -10,11 +10,11 @@ public class RoomZoneTrigger : MonoBehaviour
         {
             if (roomController != null && roomController.isLit)
             {
-                // FearManager.Instance.ReduceFear(Time.deltaTime * 2f); // Lit: reduce fear
+                GameDirector.Instance.fearManager.ReduceFear(Time.deltaTime * 2f); // Lit: reduce fear
             }
             else if (roomController != null && !roomController.isLit)
             {
-                // FearManager.Instance.AddFear(Time.deltaTime * 2f);    // Dark: increase fear
+                GameDirector.Instance.fearManager.AddFear(Time.deltaTime * 2f);    // Dark: increase fear
             }
         }
     }

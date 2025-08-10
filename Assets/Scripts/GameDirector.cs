@@ -22,6 +22,7 @@ public class GameDirector : MonoBehaviour
 
     public int destroyedDollCounter = 0;
     
+    
     //private bool powerOn = false;
 
     private Coroutine ghostTimeoutCoroutine;
@@ -113,6 +114,7 @@ public class GameDirector : MonoBehaviour
         SpawnGhostByDoll();
         fuseBox.FlickerLights();
         StartCoroutine(hellManager.DelayedHellRoomActivation());
+        hintManager.SetHint(hintsText[3]);
     }
 
     public void OnDollDestroyed()
@@ -137,6 +139,7 @@ public class GameDirector : MonoBehaviour
         DespawnGhost();
         //if (ghostReason == GhostSpawnReason.Doll) DespawnGhost();
         fuseBox.FlickerLights(false); // stop global flicker after ritual
+        fuseBox.fuseBoxLever.TogglePower();
         
     }
 
