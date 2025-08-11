@@ -137,21 +137,17 @@ public class GameDirector : MonoBehaviour
 
         // End ghost hunt
         DespawnGhost();
+        Debug.LogWarning("Despawning Ghost!");
         //if (ghostReason == GhostSpawnReason.Doll) DespawnGhost();
         fuseBox.FlickerLights(false); // stop global flicker after ritual
         fuseBox.fuseBoxLever.TogglePower();
-
-        if (dollsRemaining > 0)
-        {
-            StartCoroutine(DelayedDollSpawnActions());
-        }
-        
+        StartCoroutine(DelayedDollSpawnActions());
     }
 
     private IEnumerator DelayedDollSpawnActions()
     {
-        yield return new WaitForSeconds(10f);
-        SpawnGhostByDoll();
+        yield return new WaitForSeconds(5f);
+        OnFirstPowerRestored();
     }
 
 

@@ -65,9 +65,9 @@ public class HellManager : MonoBehaviour
         currentHellRoom = selectedRoom;
         hellRoomActive = true;
 
-        if (audioSource != null && hellRoomSFX != null)
+        if (audioSource != null)
         {
-            audioSource.PlayOneShot(hellRoomSFX);
+            audioSource.Play();
         }
 
         Debug.Log("Hell Room Activated: " + selectedRoom.roomName);

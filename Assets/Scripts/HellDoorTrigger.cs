@@ -8,13 +8,8 @@ public class HellDoorTrigger : MonoBehaviour
         {
             Debug.Log("🔥 Doll entered the hell gate!");
 
+
             Destroy(other.gameObject); // Destroy the doll
-
-            // Tell the DollManager to spawn the next one
-            DollManager manager = FindFirstObjectByType<DollManager>();
-
-            if (manager != null)
-                manager.OnDollDestroyedOrUsed();
 
             GameDirector.Instance.OnDollDestroyed();
 

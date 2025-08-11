@@ -20,7 +20,7 @@ public class GhostAIController : MonoBehaviour
     private float nextRoamTime = 0f;
 
     [Header("Vision Settings")]
-    public float visionRange = 12f;
+    public float visionRange = 40f;
     public float fieldOfView = 60f;
     public float verticalFieldOfView = 45f;
 
@@ -40,8 +40,11 @@ public class GhostAIController : MonoBehaviour
     public bool allowTeleportation = false;
     public float teleportCooldown = 20f;
     private float nextTeleportTime = 0f;
-    public float teleportDistanceFromPlayer = 10f;
+    public float teleportDistanceFromPlayer = 25f;
 
+    [Header("Chase/Loss Settings")]
+    public float lostSightGrace = 5f;
+    private float lostSightTimer = 0f; 
     private Vector3 lastPosition;
 
     public AudioSource audioSource;
@@ -61,9 +64,18 @@ public class GhostAIController : MonoBehaviour
 
         // Delay hunt start slightly
         Invoke(nameof(StartPatrolling), 2f);
+    }
+
+
+    void OnEnable()
+    {
         StartCoroutine(BlinkRoutine());
     }
 
+    void OnDisable()
+    {
+        StopCoroutine(BlinkRoutine());
+    }
 
 
     void Update()
@@ -172,26 +184,22 @@ public class GhostAIController : MonoBehaviour
 
         if (distanceToPlayer > visionRange) return;
 
-        // 🔵 3D angle between ghost forward and direction to player (no projection)
         float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
 
-        // 💡 Visual debug lines
-        Debug.DrawRay(eyePoint.position, eyePoint.forward * visionRange, Color.green); // forward
-        Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * visionRange, Color.magenta); // toward player
+        Debug.DrawRay(eyePoint.position, eyePoint.forward * visionRange, Color.green);
+        Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * visionRange, Color.magenta);
 
         if (angleToPlayer < fieldOfView / 2f)
         {
             if (Physics.Raycast(eyePoint.position, directionToPlayer.normalized, out RaycastHit hit, visionRange))
             {
-                Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * hit.distance, Color.red); // hit line
+                Debug.DrawRay(eyePoint.position, directionToPlayer.normalized * hit.distance, Color.red);
 
-                Debug.Log($"Ray hit: {hit.transform.name} | Tag: {hit.transform.tag}");
-
-                // Check if we hit player or any object under player root
                 if (hit.transform.CompareTag("Player") || hit.transform.root.CompareTag("Player"))
                 {
                     Debug.Log("👁️ Ghost sees the player!");
                     currentState = GhostState.ChasingPlayer;
+                    lostSightTimer = 0f; // ✅ reset when chase begins
                 }
             }
         }
@@ -214,8 +222,8 @@ public class GhostAIController : MonoBehaviour
 
             Debug.Log($"📍 Player teleported to {catchTeleportLocation.position}");
         }
-
         currentState = GhostState.Patrolling;
+        lostSightTimer = 0f; // ✅ reset on catch/end of chase
         Roam();
     }    
 
@@ -242,6 +250,7 @@ public class GhostAIController : MonoBehaviour
     // }
     void ChasePlayer()
     {
+        if (player == null) return;
         Debug.Log("🚨 Ghost is chasing the player!");
         agent.SetDestination(player.position);
 
@@ -255,6 +264,20 @@ public class GhostAIController : MonoBehaviour
             return;
         }
 
+        if (eyePoint == null)
+        {
+            // If no eyePoint, just time-out to patrol after grace period
+            lostSightTimer += Time.deltaTime;
+            if (lostSightTimer >= lostSightGrace)
+            {
+                currentState = GhostState.Patrolling;
+                Roam();
+                Debug.Log("👁️ Lost sight (no eyePoint) for grace — resuming patrol.");
+            }
+            return;
+        }
+
+        // LOS check
         Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
         float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
@@ -271,11 +294,20 @@ public class GhostAIController : MonoBehaviour
             }
         }
 
-        if (!canSeePlayer)
+        // ✅ New grace logic
+        if (canSeePlayer)
         {
-            currentState = GhostState.Patrolling;
-            Roam();
-            Debug.Log("👁️ Lost sight of player — resuming patrol.");
+            lostSightTimer = 0f; // seeing player → reset timer
+        }
+        else
+        {
+            lostSightTimer += Time.deltaTime; // not seeing → count up
+            if (lostSightTimer >= lostSightGrace)
+            {
+                currentState = GhostState.Patrolling;
+                Roam();
+                Debug.Log("👁️ Lost sight of player for 5s — resuming patrol.");
+            }
         }
     }
     void MoveTowardPlayerSound()
