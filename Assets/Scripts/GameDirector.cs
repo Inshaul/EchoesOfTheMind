@@ -22,6 +22,23 @@ public class GameDirector : MonoBehaviour
 
     public int destroyedDollCounter = 0;
     
+    public ScreenOverlayController overlay;       // drag ScreenOverlayController.Instance here
+    [Header("Intro")]
+    public AudioClip introClip;                   // assign your ElevenLabs mp3/wav
+    [TextArea(2,6)]
+    public string introText =
+        "My name is Sha… a police investigator chasing the trail of a missing friend.\n\n" +
+        "They say a demon roams these halls — feeding on fear, binding lost souls to cursed voodoo dolls.\n" +
+        "Destroy the dolls, and you might set the spirits free. Fail… and you will join them forever.\n\n" +
+        "Even my voice can draw it closer — and one scream will be my last.\n\n" +
+        "Somewhere in the darkness lies a magical book… find it, and it may guide you.";
+
+    [Header("Endings")]
+    public AudioClip gameOverClip;                // optional TTS for death
+    public AudioClip gameWinClip;                 // optional TTS for victory
+
+    [TextArea] public string gameOverText = "You have fallen to the entity… Your mind is not your own.";
+    [TextArea] public string gameWinText  = "The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.";
     
     //private bool powerOn = false;
 
@@ -37,11 +54,27 @@ public class GameDirector : MonoBehaviour
 
     void Start()
     {
-        HideGhost();
-        //powerOn = false;
-        hintManager.SetHint(hintsText[0]);
-        if (fuseBox != null) fuseBox.TurnOffAllRooms();
+        // HideGhost();
+        // //powerOn = false;
+        // hintManager.SetHint(hintsText[0]);
+        // if (fuseBox != null) fuseBox.TurnOffAllRooms();
+        StartCoroutine(GameStartFlow());
 
+    }
+
+    private IEnumerator GameStartFlow()
+    {
+        // Prepare scene: hide ghost, cut power, clear hints until intro finishes.
+        HideGhost();
+        if (fuseBox != null) fuseBox.TurnOffAllRooms();
+        if (hintManager != null) hintManager.SetHint(""); // hide during intro
+
+        // Play intro: keep screen black during VO, then fade out to gameplay.
+        if (overlay != null)
+            yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
+
+        // Now begin your normal loop
+        if (hintManager != null) hintManager.SetHint(hintsText[0]); // "Pick up the Flashlight"
     }
 
     public void OnFirstTorchGrabbed()
