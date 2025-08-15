@@ -49,6 +49,8 @@ public class GhostAIController : MonoBehaviour
 
     public AudioSource audioSource;
 
+    public Animator animator;
+
 
     void Start()
     {

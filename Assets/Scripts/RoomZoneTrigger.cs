@@ -10,11 +10,11 @@ public class RoomZoneTrigger : MonoBehaviour
         {
             if (roomController != null && roomController.isLit)
             {
-                GameDirector.Instance.fearManager.SetLit(true);
+                GameDirector.Instance.fearManager.ReduceFear();
             }
             else if (roomController != null && !roomController.isLit)
             {
-                GameDirector.Instance.fearManager.SetLit(false);
+                GameDirector.Instance.fearManager.AddFear();
             }
         }
     }
