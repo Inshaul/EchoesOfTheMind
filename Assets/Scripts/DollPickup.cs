@@ -30,6 +30,8 @@ public class DollPickup : MonoBehaviour
     {
         grabInteractable.selectEntered.RemoveListener(OnGrab);
         grabInteractable.selectExited.RemoveListener(OnRelease);
+        hasGrabbedBefore = false;
+        pickedUpDoll = false;
     }
     private void OnGrab(SelectEnterEventArgs args)
     {

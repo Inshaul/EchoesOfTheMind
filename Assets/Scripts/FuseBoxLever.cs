@@ -22,7 +22,7 @@ public class FuseBoxLever : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         // Use the tag of your VR hand/controller
-        if (other.CompareTag("PlayerReference") || other.CompareTag("Player"))
+        if ((other.CompareTag("PlayerReference") || other.CompareTag("Player")) &&  !GameDirector.Instance.ghost.gameObject.activeInHierarchy)
         {
             TogglePower();
         }
