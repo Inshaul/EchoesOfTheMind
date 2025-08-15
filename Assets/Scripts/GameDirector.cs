@@ -8,65 +8,52 @@ public class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance;
 
-    public GhostAIController ghost; 
-    public DollManager dollManager; 
-    public FearManager fearManager; 
+    public GhostAIController ghost;
+    public DollManager dollManager;
+    public FearManager fearManager;
 
     public FuseBoxController fuseBox;
-
     public HintManager hintManager;
-
     public HellManager hellManager;
 
-    public List<String> hintsText = new List<string> { "Pick up the Flashlight", "Find the fuse box to restore the full power", "Find the vodoo doll-Whispers helps", "Find the door to hell and throw the doll into it", "Leave the house" };
+    public List<string> hintsText = new List<string>
+    {
+        "Pick up the Flashlight",
+        "Find the fuse box to restore the full power",
+        "Find the vodoo doll-Whispers helps",
+        "Find the door to hell and throw the doll into it",
+        "Leave the house"
+    };
 
     public int destroyedDollCounter = 0;
-    
-    public ScreenOverlayController overlay;       // drag ScreenOverlayController.Instance here
+
+    public ScreenOverlayController overlay; // optional
+
     [Header("Intro")]
-    public AudioClip introClip;                   // assign your ElevenLabs mp3/wav
+    public AudioClip introClip;
     [TextArea(2,6)]
     public string introText =
         "My name is Sha… a police investigator chasing the trail of a missing friend.\n\n" +
-        "They say a demon roams these halls — feeding on fear, binding lost souls to cursed voodoo dolls.\n" +
-        "Destroy the dolls, and you might set the spirits free. Fail… and you will join them forever.\n\n" +
-        "Even my voice can draw it closer — and one scream will be my last.\n\n" +
-        "Somewhere in the darkness lies a magical book… find it, and it may guide you.";
+        "The search has led me to Ravenswood Asylum… abandoned for decades, yet the air still carries whispers of the damned.\n\n" +
+        "They say a demon roams these halls — feeding on fear, binding lost souls to cursed voodoo dolls. Destroy the dolls, and you might set the spirits free. Fail… and you will join them forever.\n\n" +
+        "But every step I take, it’s watching me… listening… waiting for the moment I slip. Even my voice can draw it closer, and one scream will be my last.\n\n" +
+        "Somewhere in the darkness lies a magical book… find it, and it may guide you";
 
     [Header("Endings")]
-    public AudioClip gameOverClip;                // optional TTS for death
-    public AudioClip gameWinClip;                 // optional TTS for victory
-
+    public AudioClip gameOverClip;
+    public AudioClip gameWinClip;
     [TextArea] public string gameOverText = "You have fallen to the entity… Your mind is not your own.";
     [TextArea] public string gameWinText  = "The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.";
 
     [Header("Jumpscares")]
-    public JumpscareManager jumpscares;          // assign in Inspector
-
-    [Tooltip("Base seconds between scare attempts at low fear.")]
-    public float baseScareInterval = 8f;
-
-    [Tooltip("At high fear, interval scales toward base * highFearScale (e.g., 0.35 = much faster).")]
-    public float highFearScale = 0.45f;
-
-    [Tooltip("Random +/- seconds added to the interval for natural feel.")]
-    public float scareJitter = 2.0f;
-
-    [Tooltip("Do we allow jumpscares while the ghost is actively chasing?")]
-    public bool scaresDuringChase = false;
+    public JumpscareManager jumpscares;   // assign in Inspector
 
     [Tooltip("Auto-spawn ghost when fear crosses the FearManager.spawnThreshold?")]
-    public bool spawnGhostOnFearThreshold = true;
-    
-    //private bool powerOn = false;
+    public bool spawnGhostOnFearThreshold = false; // ⬅ keep off for tier-first flow
 
     private Coroutine ghostTimeoutCoroutine;
     private enum GhostSpawnReason { None, Fear, Doll }
     private GhostSpawnReason ghostReason = GhostSpawnReason.None;
-
-    private float _fearRiseAccum = 0f;
-    [SerializeField] private float fearSpikeThreshold = 7f;
-    [SerializeField] private float fearRiseDecayPerSec = 2f;
 
     void Awake()
     {
@@ -76,18 +63,7 @@ public class GameDirector : MonoBehaviour
 
     void Start()
     {
-        // HideGhost();
-        // //powerOn = false;
-        // hintManager.SetHint(hintsText[0]);
-        // if (fuseBox != null) fuseBox.TurnOffAllRooms();
         StartCoroutine(GameStartFlow());
-
-    }
-    private void Update()
-    {
-        // Optional: bleed off the accumulator slowly so small changes don’t stack forever
-        if (_fearRiseAccum > 0f)
-            _fearRiseAccum = Mathf.Max(0f, _fearRiseAccum - fearRiseDecayPerSec * Time.deltaTime);
     }
 
     void OnDestroy()
@@ -97,79 +73,155 @@ public class GameDirector : MonoBehaviour
             fearManager.OnFearChanged -= HandleFearChanged;
             fearManager.OnFearTierChanged -= HandleFearTierChanged;
             fearManager.OnFearThresholdCrossed -= HandleFearThresholdCrossed;
+            fearManager.OnTierGateReached -= HandleTierGateReached;
         }
     }
+
+    private IEnumerator GameStartFlow()
+    {
+        // Prepare scene
+        HideGhost();
+        if (fuseBox != null) fuseBox.TurnOffAllRooms();
+        if (hintManager != null) hintManager.SetHint("");
+
+        // Optional intro
+        // if (overlay != null)
+        //     yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
+
+        // Start gameplay
+        if (hintManager != null) hintManager.SetHint(hintsText[0]); // "Pick up the Flashlight"
+
+        // Subscribe to fear events (tier-driven)
+        if (fearManager != null)
+        {
+            fearManager.OnFearChanged += HandleFearChanged; // optional; keep for logs/telemetry
+            fearManager.OnFearTierChanged += HandleFearTierChanged; // optional
+            fearManager.OnFearThresholdCrossed += HandleFearThresholdCrossed; // guarded by flag
+            fearManager.OnTierGateReached += HandleTierGateReached; // main driver
+        }
+
+        yield return null;
+    }
+
+    // -------- Fear Event Handlers --------
+
     private void HandleFearChanged(float newFear, float delta)
     {
-        Debug.LogError("_fearRiseAccum: " + _fearRiseAccum);
-        if (!jumpscares.IsScareRunning)
-        {
-            if (delta > 0f) _fearRiseAccum += delta;
-        }
-
-        if (_fearRiseAccum >= fearSpikeThreshold && jumpscares != null)
-        {
-            var state = ghost != null ? ghost.currentState : GhostAIController.GhostState.Patrolling;
-            jumpscares.TryScheduleRandomScare(Mathf.RoundToInt(newFear), state);
-
-            _fearRiseAccum = 0f; // reset after triggering
-        }
+        // Optional debugging hook; not used to trigger scares anymore
+        // Debug.Log($"Fear: {newFear:F1} (Δ{delta:+0.00;-0.00})");
     }
 
     private void HandleFearTierChanged(int newTier, int oldTier)
     {
-        // Optional: punctuate tier-ups with a light flicker scare
-        if (newTier > oldTier && jumpscares != null)
+        // Optional: you can log this. The real work happens in HandleTierGateReached.
+        // Debug.Log($"Tier change: {oldTier} -> {newTier}");
+    }
+
+    private void HandleTierGateReached(int tier)
+    {
+        // Tier just reached and fear is clamped at boundary.
+        // Run a quick tier beat (flicker + random tier scare), then release the gate.
+        StartCoroutine(TierBeatThenReleaseGate(tier));
+    }
+
+    private IEnumerator TierBeatThenReleaseGate(int tier)
+    {
+        // 1) Punctuate with a short global flicker
+        if (fuseBox != null)
         {
-            Debug.LogError("new Tier: "+ newTier);
-            jumpscares.TriggerScare(JumpscareManager.ScareType.LightFlicker,
-                Mathf.RoundToInt(fearManager.CurrentFear));
+            fuseBox.FlickerLights(true);
+            yield return new WaitForSeconds(1.0f);
+            fuseBox.FlickerLights(false);
         }
+
+        // 2) Random, tier-appropriate scare (forced so it always lands)
+        if (jumpscares != null && fearManager != null)
+        {
+            int fearNow = Mathf.RoundToInt(fearManager.CurrentFear);
+            yield return new WaitForSeconds(UnityEngine.Random.Range(0.1f, 0.5f)); // tiny organic offset
+            jumpscares.TriggerRandomTierScare(tier, fearNow, force: true);
+
+            // Optional: sometimes add a second quick beat for higher tiers
+            if (tier >= 1 && UnityEngine.Random.value < 0.4f)
+            {
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0.3f, 0.8f));
+                jumpscares.TriggerRandomTierScare(tier, fearNow, force: true);
+            }
+        }
+
+        // 3) Let fear progress beyond this tier
+        yield return new WaitForSeconds(0.4f);
+        fearManager.ReleaseTierGate();
     }
 
     private void HandleFearThresholdCrossed(float threshold)
     {
         if (!spawnGhostOnFearThreshold) return;
 
-        // Only spawn if not already spawned for another reason
+        // Only spawn if not already hunting for another reason
         if (ghost != null && !ghost.gameObject.activeSelf)
-        {
-            OnFearThreshold(); // your existing method spawns the ghost
-        }
+            OnFearThreshold();
     }
 
-    private IEnumerator GameStartFlow()
-    {
-        // Prepare scene: hide ghost, cut power, clear hints until intro finishes.
-        HideGhost();
-        if (fuseBox != null) fuseBox.TurnOffAllRooms();
-        if (hintManager != null) hintManager.SetHint(""); // hide during intro
-
-        // Play intro: keep screen black during VO, then fade out to gameplay.
-        // if (overlay != null)
-        //     yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
-
-        // Now begin your normal loop
-        if (hintManager != null) hintManager.SetHint(hintsText[0]); // "Pick up the Flashlight"
-
-        if (fearManager != null)
-        {
-            fearManager.OnFearChanged += HandleFearChanged;
-            fearManager.OnFearTierChanged += HandleFearTierChanged;
-            fearManager.OnFearThresholdCrossed += HandleFearThresholdCrossed;
-        }
-        yield return 0; //temp
-    }
+    // -------- High-level game hooks --------
 
     public void OnFirstTorchGrabbed()
     {
-        hintManager.SetHint(hintsText[1]);
+        if (hintManager != null) hintManager.SetHint(hintsText[1]);
     }
 
     public void OnFirstPowerRestored()
     {
-        hintManager.SetHint(hintsText[2]);
-        dollManager.SpawnNextDoll();
+        if (hintManager != null) hintManager.SetHint(hintsText[2]);
+        if (dollManager != null) dollManager.SpawnNextDoll();
+    }
+
+    public void OnDollGrabbed()
+    {
+        SpawnGhostByDoll();
+        fuseBox?.FlickerLights();
+        if (hellManager != null) StartCoroutine(hellManager.DelayedHellRoomActivation());
+        hintManager?.SetHint(hintsText[3]);
+    }
+
+    public void OnDollDestroyed()
+    {
+        destroyedDollCounter++;
+
+        // Increase ghost speed + animation speed a bit each doll
+        var agent = ghost != null ? ghost.GetComponent<NavMeshAgent>() : null;
+        if (agent) agent.speed *= 1.1f;
+        if (ghost != null && ghost.animator != null) ghost.animator.speed *= 1.1f;
+
+        int dollsRemaining = dollManager != null ? (dollManager.TotalDolls - destroyedDollCounter) : 0;
+
+        // Enable teleport if <= 2 dolls left
+        if (dollsRemaining <= 2 && ghost != null)
+        {
+            var ghostAI = ghost.GetComponent<GhostAIController>();
+            if (ghostAI != null) ghostAI.allowTeleportation = true;
+        }
+
+        // End ghost hunt
+        DespawnGhost();
+        Debug.LogWarning("Despawning Ghost!");
+
+        hellManager?.ResetHellRooms();
+        if (fuseBox != null && fuseBox.fuseBoxLever != null) fuseBox.fuseBoxLever.TogglePower();
+        StartCoroutine(DelayedDollSpawnActions());
+    }
+
+    private IEnumerator DelayedDollSpawnActions()
+    {
+        yield return new WaitForSeconds(5f);
+        OnFirstPowerRestored();
+    }
+
+    // -------- Ghost control --------
+
+    public void OnFearThreshold()
+    {
+        SpawnGhostByFear();
     }
 
     public void SpawnGhostByFear()
@@ -186,113 +238,56 @@ public class GameDirector : MonoBehaviour
         if (ghostReason != GhostSpawnReason.None) return;
         ghostReason = GhostSpawnReason.Doll;
         StartGhostHunt();
-        //ShowGhost();
     }
 
-    void SpawnGhostAtRandomLocation()
+    private void StartGhostHunt()
     {
+        SpawnGhostAtRandomLocation();
+        if (ghost != null) ghost.gameObject.SetActive(true);
+
+        var ghostAI = ghost != null ? ghost.GetComponent<GhostAIController>() : null;
+        if (ghostAI != null) ghostAI.currentState = GhostAIController.GhostState.Patrolling;
+
+        var audio = ghost != null ? ghost.GetComponent<AudioSource>() : null;
+        if (audio != null) { audio.loop = true; audio.Play(); }
+    }
+
+    private void SpawnGhostAtRandomLocation()
+    {
+        if (ghost == null) return;
+
         NavMeshHit hit;
-        Vector3 randomPoint = Vector3.zero;
+        Vector3 randomPoint = ghost.transform.position;
 
         if (NavMesh.SamplePosition(UnityEngine.Random.insideUnitSphere * 50f, out hit, 10f, NavMesh.AllAreas))
-        {
             randomPoint = hit.position;
-        }
 
         ghost.transform.position = randomPoint;
-        ghost.GetComponent<NavMeshAgent>().Warp(randomPoint);
+        var agent = ghost.GetComponent<NavMeshAgent>();
+        if (agent) agent.Warp(randomPoint);
     }
 
     public void DespawnGhost()
     {
         HideGhost();
         ghostReason = GhostSpawnReason.None;
-        fuseBox.FlickerLights(false); // stop global flicker after ritual
+        fuseBox?.FlickerLights(false);
         if (ghostTimeoutCoroutine != null) StopCoroutine(ghostTimeoutCoroutine);
+    }
+
+    private IEnumerator GhostTimeout(float t)
+    {
+        yield return new WaitForSeconds(t);
+        if (ghostReason == GhostSpawnReason.Fear) DespawnGhost();
     }
 
     private void ShowGhost()
     {
         if (ghost != null) ghost.gameObject.SetActive(true);
     }
+
     private void HideGhost()
     {
         if (ghost != null) ghost.gameObject.SetActive(false);
-    }
-
-    private IEnumerator GhostTimeout(float t)
-    {
-        yield return new WaitForSeconds(t);
-        if (ghostReason == GhostSpawnReason.Fear)
-            DespawnGhost();
-    }
-
-    public void OnDollGrabbed()
-    {
-        SpawnGhostByDoll();
-        fuseBox.FlickerLights();
-        StartCoroutine(hellManager.DelayedHellRoomActivation());
-        hintManager.SetHint(hintsText[3]);
-    }
-
-    public void OnDollDestroyed()
-    {
-        destroyedDollCounter++;
-
-        // Increase ghost speed
-        var agent = ghost.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (agent) agent.speed *= 1.1f;
-        if (ghost.animator != null)
-        {
-            ghost.animator.speed *= 1.1f;
-        }
-        int dollsRemaining = dollManager.TotalDolls - destroyedDollCounter;
-        // Enable teleport if <= 2 dolls left
-        if (dollsRemaining <= 2)
-        {
-            var ghostAI = ghost.GetComponent<GhostAIController>();
-            if (ghostAI != null)
-            {
-                ghostAI.allowTeleportation = true;
-            }
-        }
-
-        // End ghost hunt
-        DespawnGhost();
-        Debug.LogWarning("Despawning Ghost!");
-        //if (ghostReason == GhostSpawnReason.Doll) DespawnGhost();
-        hellManager.ResetHellRooms();
-        fuseBox.fuseBoxLever.TogglePower();
-        StartCoroutine(DelayedDollSpawnActions());
-    }
-
-    private IEnumerator DelayedDollSpawnActions()
-    {
-        yield return new WaitForSeconds(5f);
-        OnFirstPowerRestored();
-    }
-
-
-    void StartGhostHunt()
-    {
-        SpawnGhostAtRandomLocation();  // Random spawn point
-        ghost.gameObject.SetActive(true);
-
-        var ghostAI = ghost.GetComponent<GhostAIController>();
-        if (ghostAI != null)
-            ghostAI.currentState = GhostAIController.GhostState.Patrolling;
-
-        // Optional: start looping hunt audio
-        var audio = ghost.GetComponent<AudioSource>();
-        if (audio != null)
-        {
-            audio.loop = true;
-            audio.Play();
-        }
-    }
-
-    public void OnFearThreshold()
-    {
-        SpawnGhostByFear();
     }
 }

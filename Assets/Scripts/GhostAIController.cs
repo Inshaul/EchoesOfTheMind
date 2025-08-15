@@ -51,6 +51,8 @@ public class GhostAIController : MonoBehaviour
 
     public Animator animator;
 
+    public bool isJumpScareGhost = false;
+
 
     void Start()
     {
@@ -261,8 +263,11 @@ public class GhostAIController : MonoBehaviour
         // ✅ Player caught check
         if (distance <= catchDistance)
         {
-            Debug.Log("🪝 Player caught by ghost!");
-            TeleportPlayerOnCatch();
+            if (!isJumpScareGhost)
+            {    
+                Debug.Log("🪝 Player caught by ghost!");
+                TeleportPlayerOnCatch();
+            }
             return;
         }
 

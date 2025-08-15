@@ -9,51 +9,32 @@ public class JumpscareManager : MonoBehaviour
     public static JumpscareManager Instance;
 
     [Header("References")]
-    [Tooltip("XR camera (CenterEye) or player transform.")]
+    [Tooltip("XR camera (CenterEye) or player root transform.")]
     public Transform player;
     public GhostAIController ghost;             // optional (for GhostBlink scare)
-    public ScreenOverlayController overlay;     // optional (if you want text flashes, not required)
+    public FuseBoxController fuseBox;           // uses your flicker system
+    public ScreenOverlayController overlay;     // optional (not used here, but kept)
 
-    [Header("Timing / Limits")]
-    [Tooltip("Minimum seconds between any two jumpscares.")]
-    public float globalCooldown = 10f;
-    [Tooltip("At high fear, cooldown scales toward globalCooldown * fearCooldownScale.")]
-    public float fearCooldownScale = 0.5f;      // 0.5 => half cooldown at high fear
-    [Tooltip("Hard cap to avoid spam.")]
-    public int maxScaresPerMinute = 4;
-    [Tooltip("Allow scares during an active chase? Usually false for fairness.")]
-    public bool allowDuringChase = false;
-
-    [Header("Fear Gates")]
-    [Range(0, 100)] public int minFearForRandom = 20;
-    [Range(0, 100)] public int highFear = 65;
-
-    [Header("Spawn / Targeting")]
-    public float minSpawnDist = 2.5f;
-    public float maxSpawnDist = 6f;
-    [Tooltip("Optional fixed spawn points (e.g., corridor corners).")]
-    public Transform[] presetSpawnPoints;
-
-    [Header("Audio (3D One-Shot)")]
-    [Tooltip("A movable 3D AudioSource in the scene (NOT on the player).")]
+    [Header("Audio (3D One-Shot Emitter)")]
+    [Tooltip("Movable 3D AudioSource in the scene (NOT on player). spatialBlend=1.")]
     public AudioSource oneShot3D;
     public AudioClip[] stings;                  // short jump stings
     public AudioClip[] whispers;                // quiet whisper clips
-    public AudioClip breathClip;                // optional: heavy breathing close-by
-
-    [Header("Door Slam (Audio Only)")]
     public AudioClip doorSlamClip;
-
-    [Header("Stairs Running")]
     public AudioClip[] stairsRunClips;
+
+    [Header("Placement")]
+    public float minSpawnDist = 2.0f;
+    public float maxSpawnDist = 6.0f;
     [Tooltip("Optional fixed locations to play stairs audio from.")]
     public Transform[] stairPoints;
-    public float stairsRunMinDelay = 0.0f;
-    public float stairsRunDuration = 2.0f;
 
-    [Header("Ghost Blink-In (Optional Visual Scare)")]
-    public bool allowGhostBlinkScare = true;
+    [Header("Durations")]
+    [Tooltip("Fusebox flicker duration for the LightFlicker scare.")]
+    public float flickerDuration = 1.2f;
     public float blinkVisibleTime = 0.6f;
+    public float stairsRunMinDelay = 0.0f;
+    public float stairsRunHold = 2.0f;
 
     [Header("Haptics (VR-safe)")]
     public XRBaseController leftController;
@@ -63,16 +44,25 @@ public class JumpscareManager : MonoBehaviour
     [Range(0, 1f)] public float hapticAmpHeavy = 0.5f;
     public float hapticDurHeavy = 0.12f;
 
-    [Header("Durations")]
-    [Tooltip("How long to run the fusebox flicker for the LightFlicker scare.")]
-    public float flickerDuration = 1.2f;
+    [Header("Ghost Blink (Optional Visual)")]
+    public bool allowGhostBlinkScare = true;
+
+    [Header("Tier Scare Pools")]
+    [Tooltip("Scares used when entering Tier 0 (subtle).")]
+    public ScareType[] tier0Scares = { ScareType.LightFlicker, ScareType.WhisperBehind };
+
+    [Tooltip("Scares used when entering Tier 1 (medium).")]
+    public ScareType[] tier1Scares = { ScareType.WhisperBehind, ScareType.StairsRun, ScareType.LightFlicker };
+
+    [Tooltip("Scares used when entering Tier 2 (intense).")]
+    public ScareType[] tier2Scares = { ScareType.DoorSlam, ScareType.AudioSting, ScareType.StairsRun, ScareType.GhostBlink };
 
     // Runtime state
+    public bool IsScareRunning { get; private set; }
+    public int TotalScaresTriggered { get; private set; }
+
     private float lastScareTime = -999f;
     private readonly Queue<float> scareTimestamps = new Queue<float>(8);
-    private bool isBusy;
-
-    public bool IsScareRunning { get; private set; }
 
     public enum ScareType
     {
@@ -80,147 +70,113 @@ public class JumpscareManager : MonoBehaviour
         WhisperBehind,
         LightFlicker,
         DoorSlam,
-        ObjectLaunch,    // requires throwable props (not used by you right now, can ignore)
+        ObjectLaunch,   // placeholder (not used here)
         GhostBlink,
         StairsRun
     }
 
-    // ------------------------- Public API -------------------------
+    void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else if (Instance != this) { Destroy(gameObject); return; }
+    }
+
+    // -------------------- Public API --------------------
 
     /// <summary>
-    /// Attempts a random scare (respects fear, cooldowns, and chase rules).
+    /// Random, tier-appropriate scare. Force=true ignores internal cooldowns (good for tier beats).
     /// </summary>
-    public void TryScheduleRandomScare(int currentFear, GhostAIController.GhostState ghostState)
+    public void TriggerRandomTierScare(int tier, int currentFear, bool force = true)
     {
-        Debug.LogError("canscarenow: " + CanScareNow(currentFear, ghostState));
-        if (!CanScareNow(currentFear, ghostState)) return;
-
-        var options = new List<ScareType>
+        ScareType[] pool = tier switch
         {
-            ScareType.WhisperBehind,
-            ScareType.LightFlicker,
-            ScareType.StairsRun
+            0 => tier0Scares,
+            1 => tier1Scares,
+            _ => tier2Scares
         };
+        if (pool == null || pool.Length == 0) return;
 
-        if (currentFear >= highFear)
-        {
-            options.Add(ScareType.AudioSting);
-            options.Add(ScareType.DoorSlam);
-            if (allowGhostBlinkScare) options.Add(ScareType.GhostBlink);
-        }
-
-        var type = options[Random.Range(0, options.Count)];
-        TriggerScare(type, currentFear);
+        var type = pool[Random.Range(0, pool.Length)];
+        TriggerScare(type, currentFear, force);
     }
 
     /// <summary>
-    /// Triggers a specific scare now. Respects limits unless force==true.
+    /// Triggers a specific scare now. If force=false, a simple cooldown is applied.
     /// </summary>
     public void TriggerScare(ScareType type, int currentFear, bool force = false)
     {
-        var state = ghost != null ? ghost.currentState : GhostAIController.GhostState.Patrolling;
-        if (!force && !CanScareNow(currentFear, state)) return;
-        StartCoroutine(DoScare(type, currentFear));
+        if (!force && !CanRun()) return;
+        StartCoroutine(DoScare(type));
     }
 
-    // ---------------------- Core logic & helpers -------------------
+    // -------------------- Core --------------------
 
-    private bool CanScareNow(int fear, GhostAIController.GhostState ghostState)
+    private bool CanRun()
     {
-        if (isBusy) return false;
-        if (player == null) return false;
+        // Simple guard: avoid overlapping scares & basic per-minute cap
+        if (IsScareRunning) return false;
 
-        if (!allowDuringChase && ghostState == GhostAIController.GhostState.ChasingPlayer)
-            return false;
-
-        if (Time.time - lastScareTime < CurrentCooldown(fear))
-            return false;
-
-        // hard cap per minute
         float now = Time.time;
         while (scareTimestamps.Count > 0 && now - scareTimestamps.Peek() > 60f)
             scareTimestamps.Dequeue();
-        if (scareTimestamps.Count >= maxScaresPerMinute)
-            return false;
+        if (scareTimestamps.Count >= 6) return false; // hard cap per minute
 
-        if (fear < minFearForRandom) // too calm
-            return false;
-
+        if (now - lastScareTime < 2.0f) return false; // local cooldown (2s)
         return true;
     }
 
-    private float CurrentCooldown(int fear)
+    private IEnumerator DoScare(ScareType type)
     {
-        // Interpolate cooldown as fear rises
-        float t = Mathf.InverseLerp(minFearForRandom, 100f, fear);
-        float scaled = Mathf.Lerp(globalCooldown, globalCooldown * fearCooldownScale, t);
-        return Mathf.Max(2f, scaled);
-    }
-
-    private IEnumerator DoScare(ScareType type, int fear)
-    {
-        isBusy = true;
-        lastScareTime = Time.time;
         IsScareRunning = true;
+        TotalScaresTriggered++;
+        lastScareTime = Time.time;
         scareTimestamps.Enqueue(Time.time);
 
         switch (type)
         {
-            case ScareType.AudioSting: yield return StartCoroutine(AudioSting()); break;
-            case ScareType.WhisperBehind: yield return StartCoroutine(WhisperBehind()); break;
-            case ScareType.LightFlicker: yield return StartCoroutine(LightFlick()); break;
-            case ScareType.DoorSlam: yield return StartCoroutine(DoorSlam()); break;
-            case ScareType.ObjectLaunch: yield return StartCoroutine(ObjectLaunchTowardsPlayer()); break;
-            case ScareType.GhostBlink: yield return StartCoroutine(GhostBlinkIn()); break;
-            case ScareType.StairsRun: yield return StartCoroutine(StairsRun()); break;
+            case ScareType.AudioSting:     yield return AudioSting(); break;
+            case ScareType.WhisperBehind:  yield return WhisperBehind(); break;
+            case ScareType.LightFlicker:   yield return LightFlick(); break;
+            case ScareType.DoorSlam:       yield return DoorSlam(); break;
+            case ScareType.GhostBlink:     yield return GhostBlinkIn(); break;
+            case ScareType.StairsRun:      yield return StairsRun(); break;
+            case ScareType.ObjectLaunch:   yield return ObjectLaunchTowardsPlayer(); break; // placeholder
         }
 
-        isBusy = false;
         IsScareRunning = false;
     }
 
-    // ----------------------- Individual scares ---------------------
+    // -------------------- Scares --------------------
 
     private IEnumerator AudioSting()
     {
-        if (oneShot3D == null || stings == null || stings.Length == 0) yield break;
-
-        var clip = stings[Random.Range(0, stings.Length)];
-        oneShot3D.transform.position = PickNavMeshPointNearPlayer();
-        oneShot3D.spatialBlend = 1f;
-        oneShot3D.PlayOneShot(clip);
-
+        if (!EnsureEmitter() || stings == null || stings.Length == 0) yield break;
+        oneShot3D.transform.position = PickPointNearPlayer();
+        oneShot3D.PlayOneShot(stings[Random.Range(0, stings.Length)]);
         PulseHeavy();
-        yield return new WaitForSeconds(Mathf.Min(0.6f, clip.length));
+        yield return new WaitForSeconds(0.5f);
     }
 
     private IEnumerator WhisperBehind()
     {
-        if (oneShot3D == null || whispers == null || whispers.Length == 0) yield break;
-
-        var clip = whispers[Random.Range(0, whispers.Length)];
-
-        // place exactly behind the player's facing direction
+        if (!EnsureEmitter() || whispers == null || whispers.Length == 0) yield break;
         Vector3 behind = player.position - player.forward * 0.8f + Vector3.up * 0.1f;
         oneShot3D.transform.position = behind;
-        oneShot3D.spatialBlend = 1f;
         oneShot3D.minDistance = 0.1f;
-        oneShot3D.maxDistance = 3f;
-        oneShot3D.PlayOneShot(clip);
-
+        oneShot3D.maxDistance = Mathf.Max(oneShot3D.maxDistance, 3f);
+        oneShot3D.PlayOneShot(whispers[Random.Range(0, whispers.Length)]);
         PulseLight();
-        yield return new WaitForSeconds(Mathf.Min(1.0f, clip.length));
+        yield return new WaitForSeconds(0.8f);
     }
 
     private IEnumerator LightFlick()
     {
-        // ✅ Use your FuseBoxController
         PulseLight();
-        if (GameDirector.Instance.fuseBox != null)
+        if (fuseBox != null)
         {
-            GameDirector.Instance.fuseBox.FlickerLights(true);
+            fuseBox.FlickerChandalierRoom(true);
             yield return new WaitForSeconds(flickerDuration);
-            GameDirector.Instance.fuseBox.FlickerLights(false);
+            fuseBox.FlickerChandalierRoom(false);
         }
         else
         {
@@ -230,58 +186,36 @@ public class JumpscareManager : MonoBehaviour
 
     private IEnumerator DoorSlam()
     {
-        // ✅ Audio-only door slam
-        if (oneShot3D == null || doorSlamClip == null) yield break;
-
-        oneShot3D.transform.position = PickNavMeshPointNearPlayer();
-        oneShot3D.spatialBlend = 1f;
+        if (!EnsureEmitter() || doorSlamClip == null) yield break;
+        oneShot3D.transform.position = PickPointNearPlayer();
         oneShot3D.PlayOneShot(doorSlamClip);
-
         PulseHeavy();
         yield return new WaitForSeconds(Mathf.Min(0.6f, doorSlamClip.length));
     }
 
     private IEnumerator StairsRun()
     {
-        if (oneShot3D == null || stairsRunClips == null || stairsRunClips.Length == 0) yield break;
+        if (!EnsureEmitter() || stairsRunClips == null || stairsRunClips.Length == 0) yield break;
 
-        var clip = stairsRunClips[Random.Range(0, stairsRunClips.Length)];
-
-        // Choose a location: prefer stairPoints; otherwise fake “upstairs” behind/aside
         Vector3 pos;
         if (stairPoints != null && stairPoints.Length > 0)
-        {
             pos = stairPoints[Random.Range(0, stairPoints.Length)].position;
-        }
         else
-        {
-            Vector3 offset = (Quaternion.Euler(0f, Random.Range(-30f, 30f), 0f) * player.forward) * 2.5f;
-            pos = player.position + offset + Vector3.up * 2.2f;
-        }
+            pos = player.position + (Quaternion.Euler(0, Random.Range(-30f, 30f), 0) * player.forward) * 2.5f + Vector3.up * 2.0f;
 
         oneShot3D.transform.position = pos;
-        oneShot3D.spatialBlend = 1f;
 
-        if (stairsRunMinDelay > 0f)
-            yield return new WaitForSeconds(stairsRunMinDelay);
-
+        if (stairsRunMinDelay > 0f) yield return new WaitForSeconds(stairsRunMinDelay);
+        var clip = stairsRunClips[Random.Range(0, stairsRunClips.Length)];
         oneShot3D.PlayOneShot(clip);
         PulseLight();
-
-        yield return new WaitForSeconds(Mathf.Min(stairsRunDuration, clip.length));
-    }
-
-    private IEnumerator ObjectLaunchTowardsPlayer()
-    {
-        // Placeholder – only needed if you wire in throwable props later.
-        yield return null;
+        yield return new WaitForSeconds(Mathf.Min(stairsRunHold, clip.length));
     }
 
     private IEnumerator GhostBlinkIn()
     {
         if (ghost == null || !allowGhostBlinkScare) yield break;
 
-        // pick a point front-left/right of the player
         Vector3 dir = Quaternion.Euler(0f, Random.value < 0.5f ? -35f : 35f, 0f) * player.forward;
         Vector3 target = player.position + dir.normalized * Random.Range(minSpawnDist, Mathf.Min(maxSpawnDist, 4.5f));
 
@@ -289,55 +223,75 @@ public class JumpscareManager : MonoBehaviour
         if (NavMesh.SamplePosition(target, out hit, 2f, NavMesh.AllAreas))
         {
             ghost.gameObject.SetActive(true);
-            var agent = ghost.GetComponent<NavMeshAgent>();
-            if (agent != null) agent.Warp(hit.position); else ghost.transform.position = hit.position;
 
-            // face player
-            Vector3 look = (player.position - ghost.transform.position);
+            var agent = ghost.GetComponent<NavMeshAgent>();
+            if (agent != null) agent.Warp(hit.position);
+            else ghost.transform.position = hit.position;
+
+            Vector3 look = player.position - ghost.transform.position;
             look.y = 0f;
             if (look.sqrMagnitude > 0.01f) ghost.transform.rotation = Quaternion.LookRotation(look);
 
-            // optional audio sting
-            if (oneShot3D != null && stings != null && stings.Length > 0)
+            if (EnsureEmitter() && stings != null && stings.Length > 0)
             {
                 oneShot3D.transform.position = ghost.transform.position;
-                oneShot3D.spatialBlend = 1f;
                 oneShot3D.PlayOneShot(stings[Random.Range(0, stings.Length)]);
             }
 
             PulseHeavy();
 
-            // briefly toggle renderer visibility
-            var renderer = ghost.ghostRenderer != null ? ghost.ghostRenderer : ghost.GetComponentInChildren<SkinnedMeshRenderer>();
-            if (renderer != null)
+            // --- New logic: wait until ghost reaches player or 5s ---
+            float timer = 0f;
+            float stopDistance = 1.5f; // how close ghost must be to count as "reached"
+            while (timer < 20f)
             {
-                bool prev = renderer.enabled;
-                renderer.enabled = true;
-                yield return new WaitForSeconds(blinkVisibleTime);
-                renderer.enabled = prev;
+                if (Vector3.Distance(ghost.transform.position, player.position) <= stopDistance)
+                {
+                    break; // player reached
+                }
+                timer += Time.deltaTime;
+                yield return null;
             }
-        }
 
+            ghost.gameObject.SetActive(false); // disable after 5s or if reached
+        }
+    }
+
+    private IEnumerator ObjectLaunchTowardsPlayer()
+    {
+        AudioSting();
+        // Placeholder for future prop-throw scare. Currently no-op.
         yield return null;
     }
 
-    // -------------------------- Utilities --------------------------
+    // -------------------- Utils --------------------
 
-    private Vector3 PickNavMeshPointNearPlayer()
+    private bool EnsureEmitter()
     {
-        Vector3 origin = player.position;
-        Vector3 randomDir = Random.onUnitSphere; randomDir.y = 0f;
-        Vector3 candidate = origin + randomDir.normalized * Random.Range(minSpawnDist, maxSpawnDist);
+        if (oneShot3D == null || !oneShot3D.gameObject.activeInHierarchy)
+            return false;
+
+        // Ensure 3D
+        oneShot3D.spatialBlend = 1f;
+        if (oneShot3D.minDistance < 0.3f) oneShot3D.minDistance = 0.6f;
+        if (oneShot3D.maxDistance < 6f) oneShot3D.maxDistance = 8f;
+        return true;
+    }
+
+    private Vector3 PickPointNearPlayer()
+    {
+        Vector3 origin = player != null ? player.position : Vector3.zero;
+        Vector3 randomDir = Random.insideUnitCircle.normalized;
+        Vector3 flat = new Vector3(randomDir.x, 0f, randomDir.y);
+        Vector3 candidate = origin + flat * Random.Range(minSpawnDist, maxSpawnDist);
 
         NavMeshHit hit;
         if (NavMesh.SamplePosition(candidate, out hit, 2.0f, NavMesh.AllAreas))
             return hit.position;
 
-        // fallback to preset points
-        if (presetSpawnPoints != null && presetSpawnPoints.Length > 0)
-            return presetSpawnPoints[Random.Range(0, presetSpawnPoints.Length)].position;
-
-        return origin + randomDir.normalized * minSpawnDist;
+        // Fallback 2m ahead of player to guarantee audibility
+        Vector3 forward = player != null ? player.forward : Vector3.forward;
+        return origin + forward.normalized * 2f;
     }
 
     private void PulseLight()

@@ -31,7 +31,6 @@ public class FuseBoxLever : MonoBehaviour
     public void TogglePower()
     {
         powerOn = !powerOn;
-        //SetLeverAngle(powerOn ? onAngle : offAngle);
 
         if (leverAnimator != null)
             leverAnimator.SetBool("isOn", powerOn);

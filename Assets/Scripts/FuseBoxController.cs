@@ -5,6 +5,7 @@ using Unity.VisualScripting;
 public class FuseBoxController : MonoBehaviour
 {
     public List<RoomLightController> roomControllers;
+    public RoomLightController chandalierLights;
     public bool powerRestored = false;
     private bool hasActivatedFuseBox = false;
 
@@ -38,16 +39,36 @@ public class FuseBoxController : MonoBehaviour
         }
     }
 
-    public void FlickerRoom(string roomName, bool loop = false)
+    public void FlickerRoom(string roomName, bool doFlicker = true)
     {
         var room = roomControllers.Find(r => r.roomName == roomName);
         if (room != null)
         {
-            room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true); // Infinite flicker
-
-            //room.StartFlicker(4f, 0.1f);
+            if (doFlicker && room.isLit)
+                {
+                    room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
+                }
+                else
+                {
+                    room.StopFlicker();
+                }
         }
 
+    }
+
+    public void FlickerChandalierRoom(bool doFlicker = true)
+    {
+        if (chandalierLights != null)
+        {
+            if (doFlicker && chandalierLights.isLit)
+                {
+                    chandalierLights.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
+                }
+                else
+                {
+                    chandalierLights.StopFlicker();
+                }
+        }
     }
 
     public void FlickerLights(bool doFlicker = true)
