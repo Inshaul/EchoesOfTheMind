@@ -173,6 +173,7 @@ public class GameDirector : MonoBehaviour
         Debug.LogWarning("Despawning Ghost!");
         //if (ghostReason == GhostSpawnReason.Doll) DespawnGhost();
         fuseBox.FlickerLights(false); // stop global flicker after ritual
+        hellManager.ResetHellRooms();
         fuseBox.fuseBoxLever.TogglePower();
         StartCoroutine(DelayedDollSpawnActions());
     }
