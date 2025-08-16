@@ -92,6 +92,7 @@ public class FearManager : MonoBehaviour
 
     public void AddFear()
     {
+        Debug.LogError("JumpscareRunning: " + JumpscareRunning());
         if (pauseDuringJumpscare && JumpscareRunning()) return;
         float old = fearLevel;
         fearLevel = Mathf.Min(100, fearLevel + fearDarkModidifier * Time.deltaTime);

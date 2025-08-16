@@ -16,13 +16,15 @@ public class GameDirector : MonoBehaviour
     public HintManager hintManager;
     public HellManager hellManager;
 
-    public List<string> hintsText = new List<string>
+    public FinalEscapeManager finalEscapeManager;
+
+    [SerializeField] private List<string> hintsText = new List<string>
     {
-        "Pick up the Flashlight",
-        "Find the fuse box to restore the full power",
-        "Find the vodoo doll-Whispers helps",
-        "Find the door to hell and throw the doll into it",
-        "Leave the house"
+        "This place is too dark… I need a light. A flashlight should be around here somewhere.",
+        "The air hums with silence… maybe the fuse box can restore the asylum’s power.",
+        "Whispers… faint and restless. I wonder where they’re calling me from. Could it be the doll?",
+        "That cursed door radiates heat… only fire will break the doll’s bond. Throw it into hell itself.",
+        "The walls tremble… the spirits cry out. The final path has opened — run, before the demon takes me too!"
     };
 
     public int destroyedDollCounter = 0;
@@ -32,7 +34,7 @@ public class GameDirector : MonoBehaviour
     [Header("Intro")]
     public AudioClip introClip;
     [TextArea(2,6)]
-    public string introText =
+    private string introText =
         "My name is Sha… a police investigator chasing the trail of a missing friend.\n\n" +
         "The search has led me to Ravenswood Asylum… abandoned for decades, yet the air still carries whispers of the damned.\n\n" +
         "They say a demon roams these halls — feeding on fear, binding lost souls to cursed voodoo dolls. Destroy the dolls, and you might set the spirits free. Fail… and you will join them forever.\n\n" +
@@ -50,6 +52,8 @@ public class GameDirector : MonoBehaviour
 
     [Tooltip("Auto-spawn ghost when fear crosses the FearManager.spawnThreshold?")]
     public bool spawnGhostOnFearThreshold = false; // ⬅ keep off for tier-first flow
+
+    public AudioSource finalEscapeAudio;
 
     private Coroutine ghostTimeoutCoroutine;
     private enum GhostSpawnReason { None, Fear, Doll }
@@ -85,8 +89,8 @@ public class GameDirector : MonoBehaviour
         if (hintManager != null) hintManager.SetHint("");
 
         // Optional intro
-        // if (overlay != null)
-        //     yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
+        if (overlay != null)
+            yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
 
         // Start gameplay
         if (hintManager != null) hintManager.SetHint(hintsText[0]); // "Pick up the Flashlight"
@@ -100,7 +104,7 @@ public class GameDirector : MonoBehaviour
             fearManager.OnTierGateReached += HandleTierGateReached; // main driver
         }
 
-        yield return null;
+        // yield return null;
     }
 
     // -------- Fear Event Handlers --------
@@ -208,7 +212,39 @@ public class GameDirector : MonoBehaviour
 
         hellManager?.ResetHellRooms();
         if (fuseBox != null && fuseBox.fuseBoxLever != null) fuseBox.fuseBoxLever.TogglePower();
-        StartCoroutine(DelayedDollSpawnActions());
+
+        // StartCoroutine(Climax()); // test
+
+        if (dollsRemaining == 0)
+        {
+            StartCoroutine(Climax());
+        }
+        else
+        {
+            StartCoroutine(DelayedDollSpawnActions());
+        }
+    }
+
+    private IEnumerator Climax()
+    {
+        yield return new WaitForSeconds(15f);
+        finalEscapeAudio.Play();
+        fuseBox.SetFinalRunEnvironment();
+        hintManager.SetHint(hintsText[4]);
+        StartGhostHunt();
+        StartCoroutine(AppearFinalEscape());
+    }
+
+    public void OnEscape(Action action)
+    {
+        DespawnGhost();
+        action?.Invoke();
+    }
+
+    private IEnumerator AppearFinalEscape()
+    {
+        yield return new WaitForSeconds(30f);
+        finalEscapeManager.finalEscapeDoor.SetActive(true);
     }
 
     private IEnumerator DelayedDollSpawnActions()

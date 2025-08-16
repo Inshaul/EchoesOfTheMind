@@ -45,13 +45,13 @@ public class FuseBoxController : MonoBehaviour
         if (room != null)
         {
             if (doFlicker && room.isLit)
-                {
-                    room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
-                }
-                else
-                {
-                    room.StopFlicker();
-                }
+            {
+                room.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
+            }
+            else
+            {
+                room.StopFlicker();
+            }
         }
 
     }
@@ -61,13 +61,13 @@ public class FuseBoxController : MonoBehaviour
         if (chandalierLights != null)
         {
             if (doFlicker && chandalierLights.isLit)
-                {
-                    chandalierLights.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
-                }
-                else
-                {
-                    chandalierLights.StopFlicker();
-                }
+            {
+                chandalierLights.StartSmoothFlicker(0f, 0.1f, 1.5f, 10f, true);
+            }
+            else
+            {
+                chandalierLights.StopFlicker();
+            }
         }
     }
 
@@ -98,5 +98,19 @@ public class FuseBoxController : MonoBehaviour
             room.DeactivateFire();
             room.DisableHellDoorTrigger();
         }
+    }
+
+    public void SetFinalRunEnvironment()
+    {
+        foreach (var room in roomControllers)
+        {
+            room.SetLightColor(Color.red);
+            room.TurnOn();
+            room.DeactivateFire();
+            room.DisableHellDoorTrigger();
+            FlickerLights();
+        }
+        chandalierLights.SetLightColor(Color.red);
+        FlickerChandalierRoom();
     }
 }
