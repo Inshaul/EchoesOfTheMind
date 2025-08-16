@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -9,7 +8,6 @@ public class GhostAIController : MonoBehaviour
     public GhostState currentState = GhostState.HuntStart;
 
     public Transform eyePoint;
-
 
     private NavMeshAgent agent;
     private Transform player;
@@ -25,11 +23,11 @@ public class GhostAIController : MonoBehaviour
     public float verticalFieldOfView = 45f;
 
     [Header("Catch Settings")]
-    public Transform catchTeleportLocation; // Target location when player is caught
-    public float catchDistance = 2f;        // Distance to trigger catch
+    public Transform catchTeleportLocation;
+    public float catchDistance = 2f;
 
     [Header("Mic Detection")]
-    public ScreamDetector screamDetector; // Drag reference in Inspector
+    public ScreamDetector screamDetector; // assign in Inspector
 
     [Header("Blinking Settings")]
     public float minBlinkTime = 1f;
@@ -44,19 +42,19 @@ public class GhostAIController : MonoBehaviour
 
     [Header("Chase/Loss Settings")]
     public float lostSightGrace = 5f;
-    private float lostSightTimer = 0f; 
-    private Vector3 lastPosition;
+    private float lostSightTimer = 0f;
 
     public AudioSource audioSource;
-
     public Animator animator;
 
+    [Header("Misc")]
     public bool isJumpScareGhost = false;
 
+    private Coroutine _blinkCo; // store to stop cleanly
 
     void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
+        agent  = GetComponent<NavMeshAgent>();
         player = GameObject.FindGameObjectWithTag("Player")?.transform;
 
         if (!player)
@@ -70,17 +68,28 @@ public class GhostAIController : MonoBehaviour
         Invoke(nameof(StartPatrolling), 2f);
     }
 
-
     void OnEnable()
     {
-        StartCoroutine(BlinkRoutine());
+        if (_blinkCo == null) _blinkCo = StartCoroutine(BlinkRoutine());
+
+        // 🔊 subscribe to mic events
+        if (screamDetector != null)
+        {
+            screamDetector.OnLoudTalk += HandlePlayerLoudTalk;
+            screamDetector.OnScream   += HandlePlayerScream;
+        }
     }
 
     void OnDisable()
     {
-        StopCoroutine(BlinkRoutine());
-    }
+        if (_blinkCo != null) { StopCoroutine(_blinkCo); _blinkCo = null; }
 
+        if (screamDetector != null)
+        {
+            screamDetector.OnLoudTalk -= HandlePlayerLoudTalk;
+            screamDetector.OnScream   -= HandlePlayerScream;
+        }
+    }
 
     void Update()
     {
@@ -89,8 +98,8 @@ public class GhostAIController : MonoBehaviour
             case GhostState.Patrolling:
                 RandomRoam();
                 DetectPlayerBySight();
-                DetectMicInput();
-                TryTeleportNearPlayer();
+                DetectMicInput();        // legacy: switch to HearingPlayer during patrol if they talk
+                TryTeleportNearPlayer(); // optional hunt spice
                 break;
 
             case GhostState.ChasingPlayer:
@@ -103,22 +112,19 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
-
     void TryTeleportNearPlayer()
     {
         if (!allowTeleportation) return;
 
         if (Time.time >= nextTeleportTime && player != null)
         {
-            // Pick a random position around the player
             Vector3 randomDir = Random.insideUnitSphere * teleportDistanceFromPlayer;
             randomDir += player.position;
 
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(randomDir, out hit, 5f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(randomDir, out NavMeshHit hit, 5f, NavMesh.AllAreas))
             {
                 transform.position = hit.position;
-                agent.Warp(hit.position); // Ensures NavMesh sync
+                if (agent) agent.Warp(hit.position);
                 Debug.Log("👻 Ghost teleported!");
             }
 
@@ -129,23 +135,19 @@ public class GhostAIController : MonoBehaviour
     void StartPatrolling()
     {
         currentState = GhostState.Patrolling;
-        Roam(); // Start with a random roam
+        Roam();
     }
 
     void RandomRoam()
     {
         if (Time.time >= nextRoamTime && !agent.pathPending && agent.remainingDistance < 0.5f)
-        {
             Roam();
-        }
     }
 
     void Roam()
     {
-        Vector3 randomDirection = Random.insideUnitSphere * roamRadius;
-        randomDirection += transform.position;
-        NavMeshHit hit;
-        if (NavMesh.SamplePosition(randomDirection, out hit, 5f, NavMesh.AllAreas))
+        Vector3 randomDirection = Random.insideUnitSphere * roamRadius + transform.position;
+        if (NavMesh.SamplePosition(randomDirection, out NavMeshHit hit, 5f, NavMesh.AllAreas))
         {
             agent.SetDestination(hit.position);
             nextRoamTime = Time.time + roamDelay;
@@ -157,11 +159,10 @@ public class GhostAIController : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(Random.Range(minBlinkTime, maxBlinkTime));
-
             if (ghostRenderer != null)
             {
                 ghostRenderer.enabled = false;
-                yield return new WaitForSeconds(0.5f); // Blink duration
+                yield return new WaitForSeconds(0.5f);
                 ghostRenderer.enabled = true;
             }
         }
@@ -177,12 +178,11 @@ public class GhostAIController : MonoBehaviour
         }
     }
 
-
     void DetectPlayerBySight()
     {
         if (player == null || eyePoint == null) return;
 
-        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f; // chest/head level
+        Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
         float distanceToPlayer = directionToPlayer.magnitude;
 
@@ -201,9 +201,9 @@ public class GhostAIController : MonoBehaviour
 
                 if (hit.transform.CompareTag("Player") || hit.transform.root.CompareTag("Player"))
                 {
-                    Debug.Log("👁️ Ghost sees the player!");
                     currentState = GhostState.ChasingPlayer;
-                    lostSightTimer = 0f; // ✅ reset when chase begins
+                    lostSightTimer = 0f;
+                    Debug.Log("👁️ Ghost sees the player! → CHASING");
                 }
             }
         }
@@ -213,58 +213,43 @@ public class GhostAIController : MonoBehaviour
     {
         if (catchTeleportLocation != null && player != null)
         {
-            player.position = catchTeleportLocation.position;
-
-            // If player has a CharacterController, reset it properly
+            // Move player to catch location
             CharacterController cc = player.GetComponent<CharacterController>();
-            if (cc != null)
-            {
-                cc.enabled = false;
-                player.position = catchTeleportLocation.position;
-                cc.enabled = true;
-            }
+            if (cc != null) cc.enabled = false;
+            player.position = catchTeleportLocation.position;
+            if (cc != null) cc.enabled = true;
 
             Debug.Log($"📍 Player teleported to {catchTeleportLocation.position}");
         }
+
         currentState = GhostState.Patrolling;
-        lostSightTimer = 0f; // ✅ reset on catch/end of chase
+        lostSightTimer = 0f;
         Roam();
-    }    
+    }
 
     void DetectMicInput()
     {
-        if (screamDetector != null && screamDetector.IsPlayerTalking())
+        // legacy patrol->hearing behavior
+        if (screamDetector != null && screamDetector.IsPlayerTalking() && currentState == GhostState.Patrolling)
         {
             currentState = GhostState.HearingPlayer;
-            Debug.Log("🎤 Ghost hears the player talking!");
+            Debug.Log("🎤 Ghost hears the player talking! → HEARING");
         }
     }
 
-    // void ChasePlayer()
-    // {
-    //     Debug.Log("🚨 Ghost is chasing the player!");
-    //     agent.SetDestination(player.position);
-
-    //     float distance = Vector3.Distance(transform.position, player.position);
-    //     if (distance > visionRange * 1.5f)
-    //     {
-    //         currentState = GhostState.Patrolling;
-    //         Roam();
-    //     }
-    // }
     void ChasePlayer()
     {
         if (player == null) return;
-        Debug.Log("🚨 Ghost is chasing the player!");
+
         agent.SetDestination(player.position);
 
         float distance = Vector3.Distance(transform.position, player.position);
 
-        // ✅ Player caught check
+        // Catch check
         if (distance <= catchDistance)
         {
             if (!isJumpScareGhost)
-            {    
+            {
                 Debug.Log("🪝 Player caught by ghost!");
                 TeleportPlayerOnCatch();
             }
@@ -273,7 +258,7 @@ public class GhostAIController : MonoBehaviour
 
         if (eyePoint == null)
         {
-            // If no eyePoint, just time-out to patrol after grace period
+            // No eyes → fallback grace timer
             lostSightTimer += Time.deltaTime;
             if (lostSightTimer >= lostSightGrace)
             {
@@ -284,7 +269,7 @@ public class GhostAIController : MonoBehaviour
             return;
         }
 
-        // LOS check
+        // LOS
         Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
         float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
@@ -295,30 +280,30 @@ public class GhostAIController : MonoBehaviour
             if (Physics.Raycast(eyePoint.position, directionToPlayer.normalized, out RaycastHit hit, visionRange))
             {
                 if (hit.transform.CompareTag("Player") || hit.transform.root.CompareTag("Player"))
-                {
                     canSeePlayer = true;
-                }
             }
         }
 
-        // ✅ New grace logic
         if (canSeePlayer)
         {
-            lostSightTimer = 0f; // seeing player → reset timer
+            lostSightTimer = 0f;
         }
         else
         {
-            lostSightTimer += Time.deltaTime; // not seeing → count up
+            lostSightTimer += Time.deltaTime;
             if (lostSightTimer >= lostSightGrace)
             {
                 currentState = GhostState.Patrolling;
                 Roam();
-                Debug.Log("👁️ Lost sight of player for 5s — resuming patrol.");
+                Debug.Log("👁️ Lost sight of player for grace — resuming patrol.");
             }
         }
     }
+
     void MoveTowardPlayerSound()
     {
+        if (player == null) return;
+
         agent.SetDestination(player.position);
 
         float distance = Vector3.Distance(transform.position, player.position);
@@ -327,5 +312,53 @@ public class GhostAIController : MonoBehaviour
             currentState = GhostState.Patrolling;
             Roam();
         }
+    }
+
+    // ---------- Mic event handlers ----------
+
+    private void HandlePlayerLoudTalk(Vector3 talkPos)
+    {
+        if (currentState != GhostState.ChasingPlayer) return;
+        if (agent == null) return;
+
+        // Move toward last heard location (no teleport)
+        agent.SetDestination(talkPos);
+        lostSightTimer = 0f; // keep chase alive
+        Debug.Log("👂 Loud talk heard — moving to last heard position.");
+    }
+
+    private void HandlePlayerScream(Vector3 screamPos)
+    {
+        if (currentState != GhostState.ChasingPlayer) return;
+        TeleportVeryCloseToPlayer();
+        Debug.Log("😱 Scream detected — TELEPORTING near player.");
+    }
+
+    private void TeleportVeryCloseToPlayer(float minDist = 1.2f, float maxDist = 2.0f)
+    {
+        if (player == null || agent == null) return;
+
+        Vector2 rnd = Random.insideUnitCircle.normalized;
+        Vector3 offset = new Vector3(rnd.x, 0f, rnd.y) * Random.Range(minDist, maxDist);
+        Vector3 candidate = player.position + offset;
+
+        if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+        {
+            agent.Warp(hit.position);
+        }
+        else
+        {
+            // fallback in front of player
+            Vector3 fwd = player.forward;
+            agent.Warp(player.position + fwd.normalized * minDist);
+        }
+
+        // Face the player
+        Vector3 look = player.position - transform.position;
+        look.y = 0f;
+        if (look.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(look);
+
+        // keep chase active so we don't drop to patrol
+        lostSightTimer = 0f;
     }
 }
