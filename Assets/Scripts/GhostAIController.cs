@@ -24,7 +24,7 @@ public class GhostAIController : MonoBehaviour
 
     [Header("Catch Settings")]
     public Transform catchTeleportLocation;
-    public float catchDistance = 2f;
+    public float catchDistance = 1f;
 
     [Header("Mic Detection")]
     public ScreamDetector screamDetector; // assign in Inspector
@@ -251,7 +251,8 @@ public class GhostAIController : MonoBehaviour
             if (!isJumpScareGhost)
             {
                 Debug.Log("🪝 Player caught by ghost!");
-                TeleportPlayerOnCatch();
+                GameDirector.Instance.ShowGameOver();
+                //TeleportPlayerOnCatch();
             }
             return;
         }

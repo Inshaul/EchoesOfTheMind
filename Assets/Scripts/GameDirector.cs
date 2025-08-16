@@ -18,7 +18,8 @@ public class GameDirector : MonoBehaviour
 
     public FinalEscapeManager finalEscapeManager;
 
-    [SerializeField] private List<string> hintsText = new List<string>
+    [SerializeField]
+    private List<string> hintsText = new List<string>
     {
         "This place is too dark… I need a light. A flashlight should be around here somewhere.",
         "The air hums with silence… maybe the fuse box can restore the asylum’s power.",
@@ -33,7 +34,7 @@ public class GameDirector : MonoBehaviour
 
     [Header("Intro")]
     public AudioClip introClip;
-    [TextArea(2,6)]
+    [TextArea(2, 6)]
     private string introText =
         "My name is Sha… a police investigator chasing the trail of a missing friend.\n\n" +
         "The search has led me to Ravenswood Asylum… abandoned for decades, yet the air still carries whispers of the damned.\n\n" +
@@ -45,7 +46,7 @@ public class GameDirector : MonoBehaviour
     public AudioClip gameOverClip;
     public AudioClip gameWinClip;
     [TextArea] public string gameOverText = "You have fallen to the entity… Your mind is not your own.";
-    [TextArea] public string gameWinText  = "The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.";
+    [TextArea] public string gameWinText = "The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.";
 
     [Header("Jumpscares")]
     public JumpscareManager jumpscares;   // assign in Inspector
@@ -242,6 +243,7 @@ public class GameDirector : MonoBehaviour
     {
         DespawnGhost();
         action?.Invoke();
+        ShowGameEnd();
     }
 
     private IEnumerator AppearFinalEscape()
@@ -328,5 +330,32 @@ public class GameDirector : MonoBehaviour
     private void HideGhost()
     {
         if (ghost != null) ghost.gameObject.SetActive(false);
+    }
+    
+    public void ShowGameOver()
+    {
+        if (overlay != null)
+        {
+            // Play overlay with game over text + audio
+            overlay.PlayBlackScreen(gameOverText, gameOverClip, keepBlackDuringAudio: true, fadeOutAfter: false);
+        }
+        else
+        {
+            Debug.LogWarning("No ScreenOverlayController assigned for Game Over!");
+        }
+    }
+
+    public void ShowGameEnd()
+    {
+        DespawnGhost();
+        if (overlay != null)
+        {
+            string endText = "Thanks for playing — Echoes of the Mind";
+            overlay.PlayBlackScreen(endText, gameWinClip, keepBlackDuringAudio: true, fadeOutAfter: false);
+        }
+        else
+        {
+            Debug.LogWarning("No ScreenOverlayController assigned for Game End!");
+        }
     }
 }
