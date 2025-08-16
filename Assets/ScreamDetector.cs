@@ -69,7 +69,7 @@ public class ScreamDetector : MonoBehaviour
         // Throttled loudness logging
         if (enableDebugLogs && Time.time >= _nextDebugLogTime)
         {
-            // Debug.Log($"[ScreamDetector] loudness={micLoudness:F3}  talk≥{talkThreshold:F2}  scream≥{screamThreshold:F2}");
+            Debug.Log($"[ScreamDetector] loudness={micLoudness:F3}  talk≥{talkThreshold:F2}  scream≥{screamThreshold:F2}");
             _nextDebugLogTime = Time.time + debugPrintInterval;
         }
 

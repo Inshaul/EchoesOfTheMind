@@ -40,7 +40,9 @@ public class GameDirector : MonoBehaviour
         "The search has led me to Ravenswood Asylum… abandoned for decades, yet the air still carries whispers of the damned.\n\n" +
         "They say a demon roams these halls — feeding on fear, binding lost souls to cursed voodoo dolls. Destroy the dolls, and you might set the spirits free. Fail… and you will join them forever.\n\n" +
         "But every step I take, it’s watching me… listening… waiting for the moment I slip. Even my voice can draw it closer, and one scream will be my last.\n\n" +
-        "Somewhere in the darkness lies a magical book… find it, and it may guide you";
+        "The longer I linger, the more restless it becomes. Its anger twists reality — shadows move where no light falls, and the walls themselves breathe.\n\n" +
+        "Stay in the dark for too long, and it will find me… sometimes appearing in places it never should, as if space itself bends to its will.\n\n" +
+        "Somewhere in the darkness lies a magical book… find it, and it may guide me before the demon’s hunger consumes all hope.";
 
     [Header("Endings")]
     public AudioClip gameOverClip;
