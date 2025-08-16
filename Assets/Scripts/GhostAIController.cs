@@ -24,10 +24,10 @@ public class GhostAIController : MonoBehaviour
 
     [Header("Catch Settings")]
     public Transform catchTeleportLocation;
-    public float catchDistance = 1f;
+    public float catchDistance = 2f;
 
     [Header("Mic Detection")]
-    public ScreamDetector screamDetector; // assign in Inspector
+    public ScreamDetector screamDetector;
 
     [Header("Blinking Settings")]
     public float minBlinkTime = 1f;
@@ -250,9 +250,9 @@ public class GhostAIController : MonoBehaviour
         {
             if (!isJumpScareGhost)
             {
-                Debug.Log("🪝 Player caught by ghost!");
-                GameDirector.Instance.ShowGameOver();
+                // Debug.Log("🪝 Player caught by ghost!");
                 //TeleportPlayerOnCatch();
+                GameDirector.Instance.ShowGameOver();
             }
             return;
         }
@@ -265,7 +265,7 @@ public class GhostAIController : MonoBehaviour
             {
                 currentState = GhostState.Patrolling;
                 Roam();
-                Debug.Log("👁️ Lost sight (no eyePoint) for grace — resuming patrol.");
+                // Debug.Log("👁️ Lost sight (no eyePoint) for grace — resuming patrol.");
             }
             return;
         }
@@ -319,6 +319,7 @@ public class GhostAIController : MonoBehaviour
 
     private void HandlePlayerLoudTalk(Vector3 talkPos)
     {
+        if (isJumpScareGhost) return;
         if (currentState != GhostState.ChasingPlayer) return;
         if (agent == null) return;
 
@@ -330,6 +331,7 @@ public class GhostAIController : MonoBehaviour
 
     private void HandlePlayerScream(Vector3 screamPos)
     {
+        if (isJumpScareGhost) return;
         if (currentState != GhostState.ChasingPlayer) return;
         TeleportVeryCloseToPlayer();
         Debug.Log("😱 Scream detected — TELEPORTING near player.");

@@ -54,6 +54,8 @@ public class GameDirector : MonoBehaviour
     [Tooltip("Auto-spawn ghost when fear crosses the FearManager.spawnThreshold?")]
     public bool spawnGhostOnFearThreshold = false; // ⬅ keep off for tier-first flow
 
+    public AudioSource finalExitAppearedAudio;
+
     public AudioSource finalEscapeAudio;
 
     private Coroutine ghostTimeoutCoroutine;
@@ -212,7 +214,6 @@ public class GameDirector : MonoBehaviour
 
         // End ghost hunt
         DespawnGhost();
-        Debug.LogWarning("Despawning Ghost!");
 
         hellManager?.ResetHellRooms();
         if (fuseBox != null && fuseBox.fuseBoxLever != null) fuseBox.fuseBoxLever.TogglePower();
@@ -248,7 +249,8 @@ public class GameDirector : MonoBehaviour
 
     private IEnumerator AppearFinalEscape()
     {
-        yield return new WaitForSeconds(30f);
+        yield return new WaitForSeconds(60f);
+        finalExitAppearedAudio.Play();
         finalEscapeManager.finalEscapeDoor.SetActive(true);
     }
 
@@ -334,10 +336,11 @@ public class GameDirector : MonoBehaviour
     
     public void ShowGameOver()
     {
+        DespawnGhost();
         if (overlay != null)
         {
             // Play overlay with game over text + audio
-            overlay.PlayBlackScreen(gameOverText, gameOverClip, keepBlackDuringAudio: true, fadeOutAfter: false);
+            StartCoroutine(overlay.PlayBlackScreen(gameOverText, gameOverClip, keepBlackDuringAudio: true, fadeOutAfter: false));
         }
         else
         {
@@ -350,8 +353,8 @@ public class GameDirector : MonoBehaviour
         DespawnGhost();
         if (overlay != null)
         {
-            string endText = "Thanks for playing — Echoes of the Mind";
-            overlay.PlayBlackScreen(endText, gameWinClip, keepBlackDuringAudio: true, fadeOutAfter: false);
+            string endText = gameWinClip+"\nThanks for playing — Echoes of the Mind";
+            StartCoroutine(overlay.PlayBlackScreen(endText, gameWinClip, keepBlackDuringAudio: true, fadeOutAfter: false));
         }
         else
         {
