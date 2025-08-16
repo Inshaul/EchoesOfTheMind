@@ -13,6 +13,11 @@ public class FuseBoxLever : MonoBehaviour
 
     public Animator leverAnimator;
 
+    public bool IspowerOn()
+    {
+        return powerOn;
+    }
+
     private void Start()
     {
         powerOn = false;

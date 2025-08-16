@@ -38,11 +38,15 @@ public class GhostAIController : MonoBehaviour
     public bool allowTeleportation = false;
     public float teleportCooldown = 20f;
     private float nextTeleportTime = 0f;
-    public float teleportDistanceFromPlayer = 25f;
+    public float teleportDistanceFromPlayer = 10f;
 
     [Header("Chase/Loss Settings")]
     public float lostSightGrace = 5f;
     private float lostSightTimer = 0f;
+
+    [Header("Proximity Aggro")]
+    [Tooltip("If the player is within this distance and the ghost isn't already chasing, start chasing immediately.")]
+    public float proximityAggroDistance = 3.5f; // NEW
 
     public AudioSource audioSource;
     public Animator animator;
@@ -50,7 +54,7 @@ public class GhostAIController : MonoBehaviour
     [Header("Misc")]
     public bool isJumpScareGhost = false;
 
-    private Coroutine _blinkCo; // store to stop cleanly
+    private Coroutine _blinkCo;
 
     void Start()
     {
@@ -64,7 +68,6 @@ public class GhostAIController : MonoBehaviour
             return;
         }
 
-        // Delay hunt start slightly
         Invoke(nameof(StartPatrolling), 2f);
     }
 
@@ -72,7 +75,6 @@ public class GhostAIController : MonoBehaviour
     {
         if (_blinkCo == null) _blinkCo = StartCoroutine(BlinkRoutine());
 
-        // 🔊 subscribe to mic events
         if (screamDetector != null)
         {
             screamDetector.OnLoudTalk += HandlePlayerLoudTalk;
@@ -93,13 +95,16 @@ public class GhostAIController : MonoBehaviour
 
     void Update()
     {
+        // --- NEW: proximity aggro check (works in any state except while already chasing) ---
+        ProximityAggroCheck();
+
         switch (currentState)
         {
             case GhostState.Patrolling:
                 RandomRoam();
                 DetectPlayerBySight();
-                DetectMicInput();        // legacy: switch to HearingPlayer during patrol if they talk
-                TryTeleportNearPlayer(); // optional hunt spice
+                DetectMicInput();
+                TryTeleportNearPlayer();
                 break;
 
             case GhostState.ChasingPlayer:
@@ -109,6 +114,20 @@ public class GhostAIController : MonoBehaviour
             case GhostState.HearingPlayer:
                 MoveTowardPlayerSound();
                 break;
+        }
+    }
+
+    // NEW: if the player is too close and we’re not already chasing, start chasing right away.
+    private void ProximityAggroCheck()
+    {
+        if (currentState == GhostState.ChasingPlayer || player == null) return;
+
+        float dist = Vector3.Distance(transform.position, player.position);
+        if (dist <= proximityAggroDistance)
+        {
+            currentState = GhostState.ChasingPlayer;
+            lostSightTimer = 0f;
+            // Debug.Log("⚠️ Proximity aggro triggered → CHASING");
         }
     }
 
@@ -123,9 +142,17 @@ public class GhostAIController : MonoBehaviour
 
             if (NavMesh.SamplePosition(randomDir, out NavMeshHit hit, 5f, NavMesh.AllAreas))
             {
-                transform.position = hit.position;
-                if (agent) agent.Warp(hit.position);
-                Debug.Log("👻 Ghost teleported!");
+                // Warp to navmesh point
+                if (agent != null) agent.Warp(hit.position);
+                else transform.position = hit.position;
+
+                // --- NEW: face the player after teleport ---
+                Vector3 look = player.position - transform.position;
+                look.y = 0f;
+                if (look.sqrMagnitude > 0.01f)
+                    transform.rotation = Quaternion.LookRotation(look);
+
+                // Debug.Log("👻 Ghost teleported (now facing player).");
             }
 
             nextTeleportTime = Time.time + teleportCooldown;
@@ -203,7 +230,7 @@ public class GhostAIController : MonoBehaviour
                 {
                     currentState = GhostState.ChasingPlayer;
                     lostSightTimer = 0f;
-                    Debug.Log("👁️ Ghost sees the player! → CHASING");
+                    // Debug.Log("👁️ Ghost sees the player! → CHASING");
                 }
             }
         }
@@ -213,7 +240,6 @@ public class GhostAIController : MonoBehaviour
     {
         if (catchTeleportLocation != null && player != null)
         {
-            // Move player to catch location
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null) cc.enabled = false;
             player.position = catchTeleportLocation.position;
@@ -229,11 +255,10 @@ public class GhostAIController : MonoBehaviour
 
     void DetectMicInput()
     {
-        // legacy patrol->hearing behavior
         if (screamDetector != null && screamDetector.IsPlayerTalking() && currentState == GhostState.Patrolling)
         {
             currentState = GhostState.HearingPlayer;
-            Debug.Log("🎤 Ghost hears the player talking! → HEARING");
+            // Debug.Log("🎤 Ghost hears the player talking! → HEARING");
         }
     }
 
@@ -241,17 +266,14 @@ public class GhostAIController : MonoBehaviour
     {
         if (player == null) return;
 
-        agent.SetDestination(player.position);
+        if (agent != null) agent.SetDestination(player.position);
 
         float distance = Vector3.Distance(transform.position, player.position);
 
-        // Catch check
         if (distance <= catchDistance)
         {
             if (!isJumpScareGhost)
             {
-                // Debug.Log("🪝 Player caught by ghost!");
-                //TeleportPlayerOnCatch();
                 GameDirector.Instance.ShowGameOver();
             }
             return;
@@ -259,18 +281,15 @@ public class GhostAIController : MonoBehaviour
 
         if (eyePoint == null)
         {
-            // No eyes → fallback grace timer
             lostSightTimer += Time.deltaTime;
             if (lostSightTimer >= lostSightGrace)
             {
                 currentState = GhostState.Patrolling;
                 Roam();
-                // Debug.Log("👁️ Lost sight (no eyePoint) for grace — resuming patrol.");
             }
             return;
         }
 
-        // LOS
         Vector3 playerTargetPoint = player.position + Vector3.up * 1.2f;
         Vector3 directionToPlayer = playerTargetPoint - eyePoint.position;
         float angleToPlayer = Vector3.Angle(eyePoint.forward, directionToPlayer.normalized);
@@ -296,7 +315,7 @@ public class GhostAIController : MonoBehaviour
             {
                 currentState = GhostState.Patrolling;
                 Roam();
-                Debug.Log("👁️ Lost sight of player for grace — resuming patrol.");
+                // Debug.Log("👁️ Lost sight of player for grace — resuming patrol.");
             }
         }
     }
@@ -305,7 +324,7 @@ public class GhostAIController : MonoBehaviour
     {
         if (player == null) return;
 
-        agent.SetDestination(player.position);
+        if (agent != null) agent.SetDestination(player.position);
 
         float distance = Vector3.Distance(transform.position, player.position);
         if (distance < 3f || (screamDetector != null && !screamDetector.IsPlayerTalking()))
@@ -323,10 +342,9 @@ public class GhostAIController : MonoBehaviour
         if (currentState != GhostState.ChasingPlayer) return;
         if (agent == null) return;
 
-        // Move toward last heard location (no teleport)
         agent.SetDestination(talkPos);
-        lostSightTimer = 0f; // keep chase alive
-        Debug.Log("👂 Loud talk heard — moving to last heard position.");
+        lostSightTimer = 0f;
+        // Debug.Log("👂 Loud talk heard — moving to last heard position.");
     }
 
     private void HandlePlayerScream(Vector3 screamPos)
@@ -334,7 +352,7 @@ public class GhostAIController : MonoBehaviour
         if (isJumpScareGhost) return;
         if (currentState != GhostState.ChasingPlayer) return;
         TeleportVeryCloseToPlayer();
-        Debug.Log("😱 Scream detected — TELEPORTING near player.");
+        // Debug.Log("😱 Scream detected — TELEPORTING near player.");
     }
 
     private void TeleportVeryCloseToPlayer(float minDist = 1.2f, float maxDist = 2.0f)
@@ -351,17 +369,14 @@ public class GhostAIController : MonoBehaviour
         }
         else
         {
-            // fallback in front of player
             Vector3 fwd = player.forward;
             agent.Warp(player.position + fwd.normalized * minDist);
         }
 
-        // Face the player
         Vector3 look = player.position - transform.position;
         look.y = 0f;
         if (look.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(look);
 
-        // keep chase active so we don't drop to patrol
         lostSightTimer = 0f;
     }
 }

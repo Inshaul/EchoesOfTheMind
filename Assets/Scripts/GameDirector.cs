@@ -25,6 +25,7 @@ public class GameDirector : MonoBehaviour
         "The air hums with silence… maybe the fuse box can restore the asylum’s power.",
         "Whispers… faint and restless. I wonder where they’re calling me from. Could it be the doll?",
         "That cursed door radiates heat… only fire will break the doll’s bond. Throw it into hell itself.",
+        "Ummm...No more whispers...Be prepared!",
         "The walls tremble… the spirits cry out. The final path has opened — run, before the demon takes me too!"
     };
 
@@ -48,7 +49,7 @@ public class GameDirector : MonoBehaviour
     public AudioClip gameOverClip;
     public AudioClip gameWinClip;
     [TextArea] public string gameOverText = "You have fallen to the entity… Your mind is not your own.";
-    [TextArea] public string gameWinText = "The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.";
+    [TextArea] public string gameWinText = "<size=15>The dolls are ash. The whispers fade. You step out… but the asylum remembers your name.</size>";
 
     [Header("Jumpscares")]
     public JumpscareManager jumpscares;   // assign in Inspector
@@ -66,6 +67,10 @@ public class GameDirector : MonoBehaviour
 
     public bool PostIntro = false;
 
+    public Transform playerTeleportLocation;
+
+    private Transform player;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -74,6 +79,7 @@ public class GameDirector : MonoBehaviour
 
     void Start()
     {
+        player = GameObject.FindGameObjectWithTag("Player")?.transform;
         StartCoroutine(GameStartFlow());
     }
 
@@ -96,8 +102,8 @@ public class GameDirector : MonoBehaviour
         if (hintManager != null) hintManager.SetHint("");
 
         // Optional intro
-        if (overlay != null)
-            yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
+        // if (overlay != null)
+        //     yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
 
         PostIntro = true;
         // Start gameplay
@@ -111,7 +117,7 @@ public class GameDirector : MonoBehaviour
             fearManager.OnFearThresholdCrossed += HandleFearThresholdCrossed; // guarded by flag
             fearManager.OnTierGateReached += HandleTierGateReached; // main driver
         }
-
+        TestClimax(); //Test Climax
         yield return null;
     }
 
@@ -169,9 +175,9 @@ public class GameDirector : MonoBehaviour
     private void HandleFearThresholdCrossed(float threshold)
     {
         if (!spawnGhostOnFearThreshold) return;
-
+        int dollsRemaining = dollManager.TotalDolls - destroyedDollCounter;
         // Only spawn if not already hunting for another reason
-        if (ghost != null && !ghost.gameObject.activeSelf)
+        if (ghost != null && !ghost.gameObject.activeSelf && dollsRemaining > 0)
             OnFearThreshold();
     }
 
@@ -210,15 +216,14 @@ public class GameDirector : MonoBehaviour
         // Enable teleport if <= 2 dolls left
         if (dollsRemaining <= 2 && ghost != null)
         {
-            var ghostAI = ghost.GetComponent<GhostAIController>();
-            if (ghostAI != null) ghostAI.allowTeleportation = true;
+            ghost.allowTeleportation = true;
         }
 
         // End ghost hunt
         DespawnGhost();
 
         hellManager?.ResetHellRooms();
-        if (fuseBox != null && fuseBox.fuseBoxLever != null) fuseBox.fuseBoxLever.TogglePower();
+        if (fuseBox != null && fuseBox.fuseBoxLever != null && fuseBox.fuseBoxLever.IspowerOn()) fuseBox.fuseBoxLever.TogglePower();
 
         // StartCoroutine(Climax()); // test
 
@@ -232,13 +237,21 @@ public class GameDirector : MonoBehaviour
         }
     }
 
+    private void TestClimax()
+    {
+        var agent = ghost != null ? ghost.GetComponent<NavMeshAgent>() : null;
+        if (agent) agent.speed = 1.9f;
+        if (ghost != null && ghost.animator != null) ghost.animator.speed *= 1.7f;
+        StartCoroutine(Climax());
+    }
+
     private IEnumerator Climax()
     {
-        yield return new WaitForSeconds(15f);
+        hintManager.SetHint(hintsText[4]);
+        yield return new WaitForSeconds(40f);
         finalEscapeAudio.Play();
         fuseBox.SetFinalRunEnvironment();
-        hintManager.SetHint(hintsText[4]);
-        StartGhostHunt();
+        StartGhostHunt(true);
         StartCoroutine(AppearFinalEscape());
     }
 
@@ -252,6 +265,7 @@ public class GameDirector : MonoBehaviour
     private IEnumerator AppearFinalEscape()
     {
         yield return new WaitForSeconds(60f);
+        hintManager.SetHint(hintsText[5]);
         finalExitAppearedAudio.Play();
         finalEscapeManager.finalEscapeDoor.SetActive(true);
     }
@@ -285,7 +299,7 @@ public class GameDirector : MonoBehaviour
         StartGhostHunt();
     }
 
-    private void StartGhostHunt()
+    private void StartGhostHunt(bool allowTeleoprtation = false)
     {
         SpawnGhostAtRandomLocation();
         if (ghost != null) ghost.gameObject.SetActive(true);
@@ -295,6 +309,11 @@ public class GameDirector : MonoBehaviour
 
         var audio = ghost != null ? ghost.GetComponent<AudioSource>() : null;
         if (audio != null) { audio.loop = true; audio.Play(); }
+
+        if (allowTeleoprtation)
+        {
+            ghost.allowTeleportation = true;
+        }
     }
 
     private void SpawnGhostAtRandomLocation()
@@ -304,7 +323,7 @@ public class GameDirector : MonoBehaviour
         NavMeshHit hit;
         Vector3 randomPoint = ghost.transform.position;
 
-        if (NavMesh.SamplePosition(UnityEngine.Random.insideUnitSphere * 50f, out hit, 10f, NavMesh.AllAreas))
+        if (NavMesh.SamplePosition(UnityEngine.Random.insideUnitSphere * 50f, out hit, 20f, NavMesh.AllAreas))
             randomPoint = hit.position;
 
         ghost.transform.position = randomPoint;
@@ -335,9 +354,11 @@ public class GameDirector : MonoBehaviour
     {
         if (ghost != null) ghost.gameObject.SetActive(false);
     }
-    
+
     public void ShowGameOver()
     {
+        TeleportPlayerOnScreenDisplay();
+        finalEscapeAudio.Stop();
         DespawnGhost();
         if (overlay != null)
         {
@@ -352,15 +373,29 @@ public class GameDirector : MonoBehaviour
 
     public void ShowGameEnd()
     {
+        TeleportPlayerOnScreenDisplay();
+        finalEscapeAudio.Stop();
         DespawnGhost();
         if (overlay != null)
         {
-            string endText = gameWinClip+"\nThanks for playing — Echoes of the Mind";
+            string endText = gameWinText + "\n<size=10>Thanks for playing — Echoes of the Mind</size>";
             StartCoroutine(overlay.PlayBlackScreen(endText, gameWinClip, keepBlackDuringAudio: true, fadeOutAfter: false));
         }
         else
         {
             Debug.LogWarning("No ScreenOverlayController assigned for Game End!");
+        }
+    }
+    
+    void TeleportPlayerOnScreenDisplay()
+    {
+        if (playerTeleportLocation != null && player != null)
+        {
+            // Move player to catch location
+            CharacterController cc = player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+            player.position = playerTeleportLocation.position;
+            if (cc != null) cc.enabled = true;
         }
     }
 }
