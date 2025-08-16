@@ -7,14 +7,16 @@ public class RoomZoneTrigger : MonoBehaviour
     private void OnTriggerStay(Collider other)
     {
         if (other.CompareTag("PlayerReference"))
-        {
-            if (roomController != null && roomController.isLit)
+        {   if (GameDirector.Instance.PostIntro)
             {
-                GameDirector.Instance.fearManager.ReduceFear();
-            }
-            else if (roomController != null && !roomController.isLit)
-            {
-                GameDirector.Instance.fearManager.AddFear();
+                if (roomController != null && roomController.isLit)
+                {
+                    GameDirector.Instance.fearManager.ReduceFear();
+                }
+                else if (roomController != null && !roomController.isLit)
+                {
+                    GameDirector.Instance.fearManager.AddFear();
+                }
             }
         }
     }

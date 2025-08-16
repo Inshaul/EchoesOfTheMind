@@ -59,6 +59,8 @@ public class GameDirector : MonoBehaviour
     private enum GhostSpawnReason { None, Fear, Doll }
     private GhostSpawnReason ghostReason = GhostSpawnReason.None;
 
+    public bool PostIntro = false;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -92,6 +94,7 @@ public class GameDirector : MonoBehaviour
         if (overlay != null)
             yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
 
+        PostIntro = true;
         // Start gameplay
         if (hintManager != null) hintManager.SetHint(hintsText[0]); // "Pick up the Flashlight"
 
@@ -104,7 +107,7 @@ public class GameDirector : MonoBehaviour
             fearManager.OnTierGateReached += HandleTierGateReached; // main driver
         }
 
-        // yield return null;
+        yield return null;
     }
 
     // -------- Fear Event Handlers --------
