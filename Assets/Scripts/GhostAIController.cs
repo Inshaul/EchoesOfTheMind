@@ -95,7 +95,6 @@ public class GhostAIController : MonoBehaviour
 
     void Update()
     {
-        // --- NEW: proximity aggro check (works in any state except while already chasing) ---
         ProximityAggroCheck();
 
         switch (currentState)
@@ -116,8 +115,6 @@ public class GhostAIController : MonoBehaviour
                 break;
         }
     }
-
-    // NEW: if the player is too close and we’re not already chasing, start chasing right away.
     private void ProximityAggroCheck()
     {
         if (currentState == GhostState.ChasingPlayer || player == null) return;

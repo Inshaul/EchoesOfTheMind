@@ -101,9 +101,9 @@ public class GameDirector : MonoBehaviour
         if (fuseBox != null) fuseBox.TurnOffAllRooms();
         if (hintManager != null) hintManager.SetHint("");
 
-        // Optional intro
-        // if (overlay != null)
-        //     yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
+        // intro
+        if (overlay != null)
+            yield return overlay.PlayBlackScreen(introText, introClip, keepBlackDuringAudio: true, fadeOutAfter: true);
 
         PostIntro = true;
         // Start gameplay
@@ -117,7 +117,7 @@ public class GameDirector : MonoBehaviour
             fearManager.OnFearThresholdCrossed += HandleFearThresholdCrossed; // guarded by flag
             fearManager.OnTierGateReached += HandleTierGateReached; // main driver
         }
-        TestClimax(); //Test Climax
+        //TestClimax(); //Test Climax
         yield return null;
     }
 
