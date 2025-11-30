@@ -211,3 +211,54 @@ The system is **event-driven** and decoupled from the ghost’s FSM, making it e
 1. **Clone or download** this repository  
    ```bash
    git clone https://github.com/Inshaul/EchoesOfTheMind.git
+   
+2. Open the project in **Unity Hub**
+   - Recommended Unity version: **Unity 2023.x**
+   - Ensure **Android Build Support** is installed (required for Meta Quest builds).
+
+3. Open the main scene
+  
+4. XR / VR Setup
+- Go to **Edit → Project Settings → XR Plug-in Management**
+- Enable **XR Plug-in Management**
+- Select **Oculus / Meta Quest** as the XR provider
+- When prompted, switch to the **New Input System**
+
+5. Microphone Permissions
+- This project uses real-time microphone input for scream detection.
+- Enable microphone access:
+  ```
+  Project Settings → Player → Microphone
+  ```
+- Ensure microphone permission is allowed on the headset.
+
+6. Build & Run
+- Connect your Meta Quest headset via USB
+- Switch **Build Platform** to **Android**
+- Click **Build and Run** to deploy the project to the headset
+
+> ⚠️ **Important Notes**
+> - Voice input and scream detection require a real VR headset with microphone access.
+> - Running in the Unity Editor without a headset will disable VR movement and audio-driven mechanics.
+> - Performance and behaviour may vary depending on headset model and play environment.
+
+---
+
+## Gameplay Videos
+
+The following prototype videos demonstrate the full gameplay loop, adaptive AI behaviour, and fear-driven mechanics implemented in the project.
+
+### ▶️ Full Gameplay Walkthrough
+A complete playthrough covering exploration, fear escalation, ritual progression, ghost hunts, and the escape sequence.
+
+🔗 https://drive.google.com/file/d/1D0Ho_pazhWK4lVL_mHKqB3JQ8-7MKT-k/view?usp=drive_link
+
+### ▶️ Climax / Ending Sequence
+Focused footage of the final phase where all ghost abilities are active and the player must survive an intense, near-constant hunt to escape.
+
+🔗 https://drive.google.com/file/d/17nVaUJA0oUBqaoE77InMPBI7z5pbUi0h/view?usp=drive_link
+
+---
+
+
+
